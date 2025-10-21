@@ -31,7 +31,6 @@ export const getCurrentTime = (req: Request, res: Response): void => {
 
         const formattedDate = new Intl.DateTimeFormat('en-US', options).format(date);
         const isoDate = new Date(formattedDate);
-console.log(isoDate.toJSON())
 
 
 const [month, day, year, hour, minute, second] = formattedDate

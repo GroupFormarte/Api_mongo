@@ -49,14 +49,21 @@ const buildResult = async (documents: any[], GradosModel: mongoose.Model<any>, A
   for (const document of documents) {
     const { grado, area, competencia, componente, asignatura, cod, tipo_platform } = document.toObject();
 
-    if (tipo_platform == "Examen") {
-      // if (grado == "Pre Saber" ) {
+    // if (tipo_platform == "Examen") {
 
-        // if(area =='Sociales y filosofía'){
-             console.log(area, cod);
+      if (grado == "Preuniversitario Unal") {
+/* matemáticas, ciencias naturales, ciencias sociales, análisis textual y análisis de imagen */
 
-        // }
-     
+ if(area.trim().includes('Imagen')){
+        console.log({ grado, area });
+ }
+
+  
+        if(area.trim() =='Matemáticas' ||area.trim()=='Ciencias Sociales' ||area.trim() =='Ciencias Naturales' || area.trim() =='Análisis Textual' || area.trim() =='Análisis de la Imagen'){
+   
+
+
+
 
 
       if (!result[grado]) {
@@ -115,7 +122,7 @@ const buildResult = async (documents: any[], GradosModel: mongoose.Model<any>, A
           }
         });
       }
-    // }
+      }
 
     }
   }
@@ -124,6 +131,8 @@ const buildResult = async (documents: any[], GradosModel: mongoose.Model<any>, A
 
   for (const element of docGrados) {
     const grado = element.value;
+
+
 
     if (result[grado]) {
       if (!element.config_simulacro || !element.childrents) {
@@ -172,6 +181,8 @@ const buildResult = async (documents: any[], GradosModel: mongoose.Model<any>, A
 
         // Guardar la configuración actualizada
 
+        // console.log({configFinal,
+        // childrents});
 
         await GradosModel.findByIdAndUpdate(element._id, {
           config_simulacro: configFinal,

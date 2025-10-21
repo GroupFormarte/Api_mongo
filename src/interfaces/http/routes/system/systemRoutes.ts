@@ -28,6 +28,8 @@ router.post('/:collectionName/bulk', asyncHandler(async (req: Request, res: Resp
   return ApiResponse.success(res, documents, 'Documents retrieved successfully');
 }));
 
+
+
 // Search documents by dynamic field
 router.get('/:collectionName/search/:field/:value', asyncHandler(async (req: Request, res: Response) => {
   const { collectionName, field, value } = req.params;

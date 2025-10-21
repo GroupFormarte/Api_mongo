@@ -78,7 +78,7 @@ app.use('/api/qualifier', authenticate, qualifierRoute);     // Qualifier operat
 app.use('/api/time', authenticate, timeRoute);               // Time zone operations
 
 // Legacy routes (protected for compatibility)
-app.use('/simulacro', authenticate, crudMobile);             // Mobile CRUD operations
+app.use('/simulacro',  crudMobile);             // Mobile CRUD operations
 app.use("/progress-app", authenticate, progressRoute);       // Progress tracking
 
 // Error handling middleware (debe ir después de todas las rutas)
@@ -95,12 +95,13 @@ wss.on('connection', (ws) => {
   handleWebSocketConnection(ws); // Función que gestiona cada conexión WebSocket
 });
 
+
 // Iniciar servidor
 server.listen(port, async () => {
   try {
     // Connect to database
     await dbConnection.connect();
-    
+
     console.log(`🚀 FormarTE API listening at http://localhost:${port}`);
     console.log(`📡 WebSocket endpoint: ws://localhost:${port}/ws/notifications`);
     console.log('\n═══════════════════════════════════════════════════════════════');
@@ -121,7 +122,7 @@ server.listen(port, async () => {
     console.log('  🔐 Progress:  /progress-app/*  - Progress tracking');
     console.log('\n🔒 Security: All protected routes validate JWT + IP address');
     console.log('═══════════════════════════════════════════════════════════════');
-    
+
     startTrackingPositions();
   } catch (error) {
     console.error('Failed to start server:', error);

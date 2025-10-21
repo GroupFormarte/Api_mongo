@@ -17,7 +17,16 @@ router.post('/areas/bulk', asyncHandler(async (req: Request, res: Response) => {
   const result = await academicService.getAreasByIds(grado, ids);
   return ApiResponse.success(res, result, 'Areas retrieved successfully');
 }));
-
+router.get('/generate-simulacro/:value/:cantidad', asyncHandler(async (req: Request, res: Response) => {
+  const { value, cantidad } = req.params;
+  const result = await academicService.generateSimulacro(value, cantidad);
+   return ApiResponse.success(res, result, 'Subjects retrieved successfully');
+}));
+router.post('/get-areas/bulk', asyncHandler(async (req: Request, res: Response) => {
+  const { grado, ids } = req.body;
+  const result = await academicService.getAreasByIds(grado, ids);
+  res.status(200).json(result);
+}));
 // Get subjects by IDs in bulk
 router.post('/subjects/bulk', asyncHandler(async (req: Request, res: Response) => {
   const { grado, ids } = req.body;
