@@ -105,7 +105,7 @@ router.post('/:collectionName/:id?', asyncHandler(async (req: Request, res: Resp
   return ApiResponse.created(res, document, 'Document created successfully');
 }));
 
-// Update document by ID
+// Update document by ID (full replacement)
 router.put('/:collectionName/:id', asyncHandler(async (req: Request, res: Response) => {
   const { collectionName, id } = req.params;
   const data = req.body;
@@ -116,6 +116,23 @@ router.put('/:collectionName/:id', asyncHandler(async (req: Request, res: Respon
   }
 
   return ApiResponse.updated(res, document, 'Document updated successfully');
+}));
+
+// Partial update document by ID (only updates specified fields)
+router.patch('/:collectionName/:id', asyncHandler(async (req: Request, res: Response) => {
+  const { collectionName, id } = req.params;
+  const data = req.body;
+
+  if (!data || Object.keys(data).length === 0) {
+    return ApiResponse.badRequest(res, 'Se requiere al menos un campo para actualizar');
+  }
+
+  const document = await repository.partialUpdateById(collectionName, id, data);
+  if (!document) {
+    return ApiResponse.notFound(res, 'Documento no encontrado');
+  }
+
+  return ApiResponse.updated(res, document, 'Document partially updated successfully');
 }));
 
 // Delete document by ID

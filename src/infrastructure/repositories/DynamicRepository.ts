@@ -53,6 +53,11 @@ export class DynamicRepository {
     return await model.findByIdAndUpdate(id, data, { new: true, runValidators: true });
   }
 
+  async partialUpdateById(collectionName: string, id: string, data: any, schema: any = {}): Promise<any | null> {
+    const model = this.getModel(collectionName, schema, { useById: true });
+    return await model.findByIdAndUpdate(id, { $set: data }, { new: true, runValidators: true });
+  }
+
   async updateOne(collectionName: string, query: any, data: any, schema: any = {}): Promise<any | null> {
     const model = this.getModel(collectionName, schema);
     return await model.findOneAndUpdate(query, { $set: data }, { new: true });
