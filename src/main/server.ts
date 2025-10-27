@@ -38,7 +38,7 @@ const dbConnection = DatabaseConnection.getInstance();
 // ────────────── Middlewares ──────────────
 app.use(cors({
   origin: '*', // ahora sí funciona con '*'
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS','PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 

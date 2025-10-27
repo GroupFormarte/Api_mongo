@@ -118,6 +118,47 @@ router.put('/:collectionName/:id', asyncHandler(async (req: Request, res: Respon
   return ApiResponse.updated(res, document, 'Document updated successfully');
 }));
 
+// Update or create student answers by id_instituto (prevents overwriting other students' data)
+// Receives flat JSON with student data and answers mixed
+// If student doesn't exist: creates it with all data
+// If student exists: only updates sectionOne/sectionTwo, ignores other fields
+router.patch('/assigned_simulation/:documentId/simulacro/:simulacroId/student/:userId', asyncHandler(async (req: Request, res: Response) => {
+  const { documentId, simulacroId, userId } = req.params;
+  const flatData = req.body;
+
+  // Validate that required fields are present
+  if (!flatData || Object.keys(flatData).length === 0) {
+    return ApiResponse.badRequest(res, 'Se requiere data en el body');
+  }
+
+  // Check if at least sectionOne or sectionTwo is present
+  if (!flatData.sectionOne && !flatData.sectionTwo) {
+    return ApiResponse.badRequest(res, 'Se requiere al menos sectionOne o sectionTwo');
+  }
+
+  // Use id_instituto from body, fallback to documentId if not provided
+  const idInstituto = flatData.id_instituto || documentId;
+
+  const document = await repository.updateOrCreateStudentAnswersByQuery(
+    'assigned_simulation',
+    'id_instituto',
+    idInstituto,
+    simulacroId,
+    flatData
+  );
+
+  if (!document) {
+    return ApiResponse.notFound(res, 'Documento o simulacro no encontrado');
+  }
+
+  // Return simplified response without full document
+  return ApiResponse.updated(res, {
+    success: true,
+    userId: flatData.userId,
+    message: 'Student answers updated successfully'
+  }, 'Student answers updated successfully');
+}));
+
 // Partial update document by ID (only updates specified fields)
 router.patch('/:collectionName/:id', asyncHandler(async (req: Request, res: Response) => {
   const { collectionName, id } = req.params;
