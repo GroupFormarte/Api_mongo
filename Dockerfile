@@ -9,7 +9,6 @@ WORKDIR /usr/src/app
 # Copiar archivos necesarios primero (para cache de dependencias)
 COPY package*.json ./
 
-COPY uploads /usr/src/app/uploads
 # Instalar dependencias de sistema para Puppeteer/Chromium
 RUN apt-get update && apt-get install -y \
     wget \
