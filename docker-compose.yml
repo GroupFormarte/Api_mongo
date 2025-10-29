@@ -6,7 +6,7 @@ services:
     expose:
       - '3000'
     ports:
-      - "8086:3000"  # Puedes modificar el puerto según tus necesidades
+      - "8091:3000"  # Puedes modificar el puerto según tus necesidades
     volumes:
       - ./uploads:/usr/src/app/uploads
     restart: always
