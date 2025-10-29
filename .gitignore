@@ -7,3 +7,4 @@ uploads/
 docker-compose.yml
 Dockerfile
 build
+dist

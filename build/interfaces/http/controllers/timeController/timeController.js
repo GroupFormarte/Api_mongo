@@ -29,7 +29,6 @@ const getCurrentTime = (req, res) => {
         };
         const formattedDate = new Intl.DateTimeFormat('en-US', options).format(date);
         const isoDate = new Date(formattedDate);
-        console.log(isoDate.toJSON());
         const [month, day, year, hour, minute, second] = formattedDate
             .replace(',', '')
             .split(/[/\s:]/);

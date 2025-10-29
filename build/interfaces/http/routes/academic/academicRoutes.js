@@ -27,6 +27,16 @@ router.post('/areas/bulk', (0, errorHandler_1.asyncHandler)((req, res) => __awai
     const result = yield academicService.getAreasByIds(grado, ids);
     return ApiResponse_1.default.success(res, result, 'Areas retrieved successfully');
 })));
+router.get('/generate-simulacro/:value/:cantidad', (0, errorHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { value, cantidad } = req.params;
+    const result = yield academicService.generateSimulacro(value, cantidad);
+    return ApiResponse_1.default.success(res, result, 'Subjects retrieved successfully');
+})));
+router.post('/get-areas/bulk', (0, errorHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { grado, ids } = req.body;
+    const result = yield academicService.getAreasByIds(grado, ids);
+    res.status(200).json(result);
+})));
 // Get subjects by IDs in bulk
 router.post('/subjects/bulk', (0, errorHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { grado, ids } = req.body;
@@ -71,5 +81,10 @@ router.get('/academic-level/:collectionName/:id/:score', (0, errorHandler_1.asyn
     const { collectionName, id, score } = req.params;
     const result = yield academicService.getAcademicLevelByScore(collectionName, id, score);
     return ApiResponse_1.default.success(res, result, 'Academic level retrieved successfully');
+})));
+router.get('/preguntas-por-tipo/:idPrograma/:type/:value', (0, errorHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { idPrograma, value } = req.params;
+    const result = yield academicService.getQuestionsByTypeAndArea(idPrograma, value);
+    res.status(200).json(result);
 })));
 exports.default = router;

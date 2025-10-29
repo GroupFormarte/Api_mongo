@@ -25,10 +25,10 @@ export interface RefreshResponse {
 }
 
 export class AuthService {
-  // private readonly podiumApiUrl = 'https://stage-api.plataformapodium.com/api/user/';
-  private readonly podiumApiUrl = 'http://localhost:3200/api/user/';
+  private readonly podiumApiUrl = 'https://stage-api.plataformapodium.com/api/user/';
+  // private readonly podiumApiUrl = 'http://localhost:3200/api/user/';
   private readonly jwtSecret: string;
-  private readonly jwtExpiresIn: string = '24h';
+  private readonly jwtExpiresIn = '24h' as const;
 
   constructor() {
     this.jwtSecret = process.env.JWT_SECRET || 'fallback-secret-change-in-production';

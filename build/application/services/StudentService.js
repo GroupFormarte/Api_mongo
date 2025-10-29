@@ -18,7 +18,7 @@ class StudentService {
     getStudentPosition(grado, id_student) {
         return __awaiter(this, void 0, void 0, function* () {
             var _a;
-            const student = yield this.repository.findOne('Estudiantes', { id_student });
+            const student = yield this.repository.findOne('students', { id_student });
             if (!student) {
                 return { posicion: 0, n_estudiantes: 0 };
             }
@@ -26,7 +26,7 @@ class StudentService {
             if (!gradoDoc || gradoDoc.scoreSimulacro == 0) {
                 return { posicion: 0, n_estudiantes: 0 };
             }
-            const estudiantes = yield this.repository.find('Estudiantes', {});
+            const estudiantes = yield this.repository.find('students', {});
             const scoresSimulacro = [];
             for (const otherStudent of estudiantes) {
                 if (otherStudent.id_student === id_student)
@@ -65,9 +65,10 @@ class StudentService {
             return yield this.repository.findById(collectionName, id);
         });
     }
-    getStudentByStudentId(collectionName, id_student) {
+    getStudentByStudentId(collectionName, id_estudiante) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield this.repository.findOne(collectionName, { id_student });
+            console.log(collectionName, { id_estudiante });
+            return yield this.repository.findOne(collectionName, { id_estudiante });
         });
     }
     updateStudent(collectionName, id, data) {
@@ -88,7 +89,35 @@ class StudentService {
     createStudent(collectionName, data, id) {
         return __awaiter(this, void 0, void 0, function* () {
             const documentData = id ? Object.assign(Object.assign({}, data), { id }) : data;
+            console.log(".", { documentData });
             return yield this.repository.create(collectionName, documentData);
+        });
+    }
+    removeExamenAsignado(ids_estudiantes, id_simulacro) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const updated = [];
+            const notFound = [];
+            for (const id_estudiante of ids_estudiantes) {
+                const student = yield this.repository.findOne('students', { id_estudiante });
+                if (!student) {
+                    notFound.push(id_estudiante);
+                    continue;
+                }
+                if (student.examenes_asignados && Array.isArray(student.examenes_asignados)) {
+                    const originalLength = student.examenes_asignados.length;
+                    student.examenes_asignados = student.examenes_asignados.filter((examen) => examen.id_simulacro !== id_simulacro);
+                    if (originalLength !== student.examenes_asignados.length) {
+                        yield this.repository.updateById('students', student._id, { examenes_asignados: student.examenes_asignados });
+                        updated.push(id_estudiante);
+                    }
+                }
+            }
+            return { updated, notFound };
+        });
+    }
+    searchByField(collectionName, field, value) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield this.repository.searchByField(collectionName, field, value);
         });
     }
 }

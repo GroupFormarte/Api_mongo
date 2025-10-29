@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.notFoundHandler = exports.asyncHandler = exports.errorHandler = exports.AppError = void 0;
+const logger_1 = require("../utils/logger");
 class AppError extends Error {
     constructor(message, statusCode = 500, details) {
         super(message);
@@ -32,14 +33,23 @@ const errorHandler = (err, req, res, next) => {
         message = 'Registro duplicado';
         details = 'Ya existe un registro con estos datos';
     }
-    // Log error for debugging (in production, use a proper logger)
+    // Log error with file and line information
     if (statusCode >= 500) {
-        console.error('Server Error:', {
-            message: err.message,
-            stack: err.stack,
+        logger_1.logger.error('Server Error', err, {
             url: req.url,
             method: req.method,
             body: req.body,
+            params: req.params,
+            query: req.query,
+            userAgent: req.get('User-Agent'),
+            ip: req.ip
+        });
+    }
+    else if (statusCode >= 400) {
+        logger_1.logger.warn(`Client Error ${statusCode}`, {
+            message: err.message,
+            url: req.url,
+            method: req.method,
             params: req.params,
             query: req.query
         });
@@ -58,3 +68,8 @@ const notFoundHandler = (req, res) => {
     });
 };
 exports.notFoundHandler = notFoundHandler;
+/*
+
+crear un middleware que para no dejar un los controladores abiertos
+
+*/ 

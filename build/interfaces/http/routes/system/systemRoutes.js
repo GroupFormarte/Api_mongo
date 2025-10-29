@@ -63,8 +63,8 @@ router.get('/:collectionName/category/:category', (0, errorHandler_1.asyncHandle
 router.get('/:collectionName', (0, errorHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { collectionName } = req.params;
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
     const documents = yield repository.find(collectionName);
+    const limit = parseInt(req.query.limit) || documents.length;
     // Simple pagination
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
@@ -90,7 +90,7 @@ router.post('/:collectionName/:id?', (0, errorHandler_1.asyncHandler)((req, res)
     const document = yield repository.create(collectionName, documentData, schemaDefinition);
     return ApiResponse_1.default.created(res, document, 'Document created successfully');
 })));
-// Update document by ID
+// Update document by ID (full replacement)
 router.put('/:collectionName/:id', (0, errorHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { collectionName, id } = req.params;
     const data = req.body;
@@ -99,6 +99,47 @@ router.put('/:collectionName/:id', (0, errorHandler_1.asyncHandler)((req, res) =
         return ApiResponse_1.default.notFound(res, 'Documento no encontrado');
     }
     return ApiResponse_1.default.updated(res, document, 'Document updated successfully');
+})));
+// Update or create student answers by id_instituto (prevents overwriting other students' data)
+// Receives flat JSON with student data and answers mixed
+// If student doesn't exist: creates it with all data
+// If student exists: only updates sectionOne/sectionTwo, ignores other fields
+router.patch('/assigned_simulation/:documentId/simulacro/:simulacroId/student/:userId', (0, errorHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { documentId, simulacroId, userId } = req.params;
+    const flatData = req.body;
+    // Validate that required fields are present
+    if (!flatData || Object.keys(flatData).length === 0) {
+        return ApiResponse_1.default.badRequest(res, 'Se requiere data en el body');
+    }
+    // Check if at least sectionOne or sectionTwo is present
+    if (!flatData.sectionOne && !flatData.sectionTwo) {
+        return ApiResponse_1.default.badRequest(res, 'Se requiere al menos sectionOne o sectionTwo');
+    }
+    // Use id_instituto from body, fallback to documentId if not provided
+    const idInstituto = flatData.id_instituto || documentId;
+    const document = yield repository.updateOrCreateStudentAnswersByQuery('assigned_simulation', 'id_instituto', idInstituto, simulacroId, flatData);
+    if (!document) {
+        return ApiResponse_1.default.notFound(res, 'Documento o simulacro no encontrado');
+    }
+    // Return simplified response without full document
+    return ApiResponse_1.default.updated(res, {
+        success: true,
+        userId: flatData.userId,
+        message: 'Student answers updated successfully'
+    }, 'Student answers updated successfully');
+})));
+// Partial update document by ID (only updates specified fields)
+router.patch('/:collectionName/:id', (0, errorHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { collectionName, id } = req.params;
+    const data = req.body;
+    if (!data || Object.keys(data).length === 0) {
+        return ApiResponse_1.default.badRequest(res, 'Se requiere al menos un campo para actualizar');
+    }
+    const document = yield repository.partialUpdateById(collectionName, id, data);
+    if (!document) {
+        return ApiResponse_1.default.notFound(res, 'Documento no encontrado');
+    }
+    return ApiResponse_1.default.updated(res, document, 'Document partially updated successfully');
 })));
 // Delete document by ID
 router.delete('/:collectionName/:id', (0, errorHandler_1.asyncHandler)((req, res) => __awaiter(void 0, void 0, void 0, function* () {

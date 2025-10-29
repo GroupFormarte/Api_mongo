@@ -54,63 +54,65 @@ const buildResult = (documents, GradosModel, AreasModel) => __awaiter(void 0, vo
     const result = {};
     for (const document of documents) {
         const { grado, area, competencia, componente, asignatura, cod, tipo_platform } = document.toObject();
-        if (tipo_platform == "Examen") {
-            // if (grado == "Pre Saber" ) {
-            // if(area =='Sociales y filosofía'){
-            console.log(area, cod);
-            // }
-            if (!result[grado]) {
-                result[grado] = {
-                    areas: [],
-                    competencias: [],
-                    componentes: [],
-                    asignaturas: [],
-                    childrents: []
-                };
+        // if (tipo_platform == "Examen") {
+        if (grado == "Preuniversitario Unal") {
+            /* matemáticas, ciencias naturales, ciencias sociales, análisis textual y análisis de imagen */
+            if (area.trim().includes('Imagen')) {
+                console.log({ grado, area });
             }
-            if (area !== 'N/A' && !result[grado].areas.find((a) => a.nombre === area)) {
-                result[grado].areas.push({
-                    nombre: area,
-                    sessions: {
-                        session_1: 0,
-                        session_2: 0
+            if (area.trim() == 'Matemáticas' || area.trim() == 'Ciencias Sociales' || area.trim() == 'Ciencias Naturales' || area.trim() == 'Análisis Textual' || area.trim() == 'Análisis de la Imagen') {
+                if (!result[grado]) {
+                    result[grado] = {
+                        areas: [],
+                        competencias: [],
+                        componentes: [],
+                        asignaturas: [],
+                        childrents: []
+                    };
+                }
+                if (area !== 'N/A' && !result[grado].areas.find((a) => a.nombre === area)) {
+                    result[grado].areas.push({
+                        nombre: area,
+                        sessions: {
+                            session_1: 0,
+                            session_2: 0
+                        }
+                    });
+                    const are = yield AreasModel.findOne({
+                        value: area
+                    });
+                    if (!validateIdUnique(result[grado].childrents, are.id)) {
+                        result[grado].childrents.push(are.id);
                     }
-                });
-                const are = yield AreasModel.findOne({
-                    value: area
-                });
-                if (!validateIdUnique(result[grado].childrents, are.id)) {
-                    result[grado].childrents.push(are.id);
+                }
+                if (asignatura !== 'N/A' && !result[grado].asignaturas.find((c) => c.nombre === asignatura)) {
+                    result[grado].asignaturas.push({
+                        nombre: asignatura,
+                        sessions: {
+                            session_1: 0,
+                            session_2: 0
+                        }
+                    });
+                }
+                if (competencia !== 'N/A' && !result[grado].competencias.find((c) => c.nombre === competencia)) {
+                    result[grado].competencias.push({
+                        nombre: competencia,
+                        sessions: {
+                            session_1: 0,
+                            session_2: 0
+                        }
+                    });
+                }
+                if (componente !== 'N/A' && !result[grado].componentes.find((c) => c.nombre === componente)) {
+                    result[grado].componentes.push({
+                        nombre: componente,
+                        sessions: {
+                            session_1: 0,
+                            session_2: 0
+                        }
+                    });
                 }
             }
-            if (asignatura !== 'N/A' && !result[grado].asignaturas.find((c) => c.nombre === asignatura)) {
-                result[grado].asignaturas.push({
-                    nombre: asignatura,
-                    sessions: {
-                        session_1: 0,
-                        session_2: 0
-                    }
-                });
-            }
-            if (competencia !== 'N/A' && !result[grado].competencias.find((c) => c.nombre === competencia)) {
-                result[grado].competencias.push({
-                    nombre: competencia,
-                    sessions: {
-                        session_1: 0,
-                        session_2: 0
-                    }
-                });
-            }
-            if (componente !== 'N/A' && !result[grado].componentes.find((c) => c.nombre === componente)) {
-                result[grado].componentes.push({
-                    nombre: componente,
-                    sessions: {
-                        session_1: 0,
-                        session_2: 0
-                    }
-                });
-            }
-            // }
         }
     }
     // Buscar los grados en la base de datos
@@ -158,6 +160,8 @@ const buildResult = (documents, GradosModel, AreasModel) => __awaiter(void 0, vo
                 // Agregar los elementos que faltan
                 mergeConfigs(existingConfig, result[grado]);
                 // Guardar la configuración actualizada
+                // console.log({configFinal,
+                // childrents});
                 yield GradosModel.findByIdAndUpdate(element._id, {
                     config_simulacro: configFinal,
                     childrents: childrents
@@ -287,6 +291,14 @@ function cloneDatabase(sourceUri, targetUri, sourceDbName, targetDbName) {
             yield targetClient.connect(targetUri);
             const targetDb = targetClient.connection.db;
             console.log(`Connected to target database: ${targetDbName}`);
+            // Drop target database if it exists
+            try {
+                yield targetDb.dropDatabase();
+                console.log(`Target database ${targetDbName} dropped`);
+            }
+            catch (error) {
+                console.log(`Target database ${targetDbName} does not exist or could not be dropped`);
+            }
             // Listar todas las colecciones de la base de datos origen
             const collections = yield sourceDb.listCollections().toArray();
             // Iterar sobre cada colección y clonarla
@@ -321,15 +333,10 @@ function cloneDatabase(sourceUri, targetUri, sourceDbName, targetDbName) {
 }
 // Ruta para clonar una base de datos
 router.post('/clone-database', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { sourceDbName, targetDbName } = req.body;
-    const sourceUri = 'mongodb://usrappformarte:&GTlsX7rqCsd&n@54.164.38.115:27017/arkappformarte';
-    const targetUri = `mongodb://usrappformarte:&GTlsX7rqCsd&n@54.164.38.115:27017/${targetDbName}`;
-    // const sourceUri = 'mongodb://localhost:27017/formarte';
-    // const targetUri = `mongodb://localhost:27017/${targetDbName}`;
     try {
-        const sourceUri = 'mongodb://usrappformarte:&GTlsX7rqCsd&n@54.164.38.115:27017/arkappformarte';
+        const sourceUri = 'mongodb://arkdevuser:q1CRB%2A8%252%3Fqk@54.164.38.115:27017/arkdevmongo';
         const targetUri = 'mongodb://localhost:27017/arkappformarte_clone_5';
-        const sourceDbName = 'arkappformarte';
+        const sourceDbName = 'arkdevmongo';
         const targetDbName = 'arkappformarte_clone_5';
         yield cloneDatabase(sourceUri, targetUri, sourceDbName, targetDbName);
         res.status(200).send({ message: `Database ${sourceDbName} cloned to ${targetDbName}` });
