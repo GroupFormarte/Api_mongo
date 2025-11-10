@@ -23,6 +23,7 @@ import academicRoutes from '../interfaces/http/routes/academic/academicRoutes';
 import studentRoutes from '../interfaces/http/routes/students/studentRoutes';
 import systemRoutes from '../interfaces/http/routes/system/systemRoutes';
 import mediaRoutes from '../interfaces/http/routes/media/mediaRoutes';
+import appVersionRoutes from '../interfaces/http/routes/appVersionRoutes';
 
 // Middleware
 import { errorHandler, notFoundHandler } from '../shared/middleware/errorHandler';
@@ -65,6 +66,7 @@ app.get('/', (_req: Request, res: Response) => {
 
 // Public Routes (no authentication required)
 app.use('/api/auth', userRoutes);               // Authentication & user management (login, register)
+app.use('/api/version', appVersionRoutes);      // App version management (GET, POST, PUT)
 
 // Protected Routes (require authentication with IP validation)
 app.use('/api/academic', authenticate, academicRoutes);      // Academic operations (areas, subjects, simulacros)
@@ -109,6 +111,7 @@ server.listen(port, async () => {
     console.log('═══════════════════════════════════════════════════════════════');
     console.log('\n📋 Public Routes (No Auth):');
     console.log('  🔓 Auth:      /api/auth/*      - Login, Register, Logout');
+    console.log('  🔓 Version:   /api/version     - App version (GET, POST, PUT)');
     console.log('\n📋 Protected Routes (Auth + IP Validation Required):');
     console.log('  🔐 Academic:  /api/academic/*  - Areas, subjects, simulacros');
     console.log('  🔐 Students:  /api/students/*  - Student management & ranking');
