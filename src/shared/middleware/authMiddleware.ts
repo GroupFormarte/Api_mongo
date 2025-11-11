@@ -73,17 +73,14 @@ export async function authenticate(
       return;
     }
 
-    // Get client IP
-    const clientIp = getClientIp(req);
-
-    // Validate session with IP
-    const session = await sessionStorage.validateSession(token, clientIp);
+    // Validate session (IP validation removed)
+    const session = await sessionStorage.validateSession(token);
 
     if (!session) {
       res.status(401).json({
         success: false,
         message: 'Invalid session',
-        error: 'Session expired, invalid, or IP mismatch detected'
+        error: 'Session expired or invalid'
       });
       return;
     }

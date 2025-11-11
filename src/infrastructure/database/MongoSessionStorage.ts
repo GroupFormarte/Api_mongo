@@ -80,12 +80,12 @@ export class MongoSessionStorage implements SessionStoragePort {
     return result.deletedCount || 0;
   }
 
-  async validateSession(token: string, ipAddress: string): Promise<SessionMetadata | null> {
+  async validateSession(token: string): Promise<SessionMetadata | null> {
     const now = new Date();
 
+    // IP validation removed - only validate token, active status, and expiration
     const session = await this.sessionModel.findOne({
       token,
-      ipAddress,
       isActive: true,
       expiresAt: { $gt: now }
     }).lean();

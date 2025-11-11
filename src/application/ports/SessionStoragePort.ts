@@ -32,7 +32,7 @@ export interface SessionStoragePort {
   deleteExpiredSessions(): Promise<number>;
 
   /**
-   * Validate session by token and IP
+   * Validate session by token (IP validation removed)
    */
-  validateSession(token: string, ipAddress: string): Promise<SessionMetadata | null>;
+  validateSession(token: string): Promise<SessionMetadata | null>;
 }

@@ -68,7 +68,7 @@ app.get('/', (_req: Request, res: Response) => {
 app.use('/api/auth', userRoutes);               // Authentication & user management (login, register)
 app.use('/api/version', appVersionRoutes);      // App version management (GET, POST, PUT)
 
-// Protected Routes (require authentication with IP validation)
+// Protected Routes (require authentication)
 app.use('/api/academic', authenticate, academicRoutes);      // Academic operations (areas, subjects, simulacros)
 app.use('/api/students', authenticate, studentRoutes);       // Student management & ranking
 app.use('/api/system', authenticate, systemRoutes);          // System utilities & CRUD operations
@@ -107,12 +107,12 @@ server.listen(port, async () => {
     console.log(`🚀 FormarTE API listening at http://localhost:${port}`);
     console.log(`📡 WebSocket endpoint: ws://localhost:${port}/ws/notifications`);
     console.log('\n═══════════════════════════════════════════════════════════════');
-    console.log('🌟 FORMARTE API - UNIFIED STRUCTURE WITH IP VALIDATION');
+    console.log('🌟 FORMARTE API - UNIFIED STRUCTURE');
     console.log('═══════════════════════════════════════════════════════════════');
     console.log('\n📋 Public Routes (No Auth):');
     console.log('  🔓 Auth:      /api/auth/*      - Login, Register, Logout');
     console.log('  🔓 Version:   /api/version     - App version (GET, POST, PUT)');
-    console.log('\n📋 Protected Routes (Auth + IP Validation Required):');
+    console.log('\n📋 Protected Routes (Auth Required):');
     console.log('  🔐 Academic:  /api/academic/*  - Areas, subjects, simulacros');
     console.log('  🔐 Students:  /api/students/*  - Student management & ranking');
     console.log('  🔐 System:    /api/system/*    - System utilities & CRUD');
@@ -123,7 +123,7 @@ server.listen(port, async () => {
     console.log('\n📋 Legacy Routes (Protected):');
     console.log('  🔐 Simulacro: /simulacro/*     - Mobile CRUD operations');
     console.log('  🔐 Progress:  /progress-app/*  - Progress tracking');
-    console.log('\n🔒 Security: All protected routes validate JWT + IP address');
+    console.log('\n🔒 Security: All protected routes validate JWT tokens');
     console.log('═══════════════════════════════════════════════════════════════');
 
     startTrackingPositions();
