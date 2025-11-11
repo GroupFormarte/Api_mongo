@@ -34,6 +34,7 @@ const academicRoutes_1 = __importDefault(require("../interfaces/http/routes/acad
 const studentRoutes_1 = __importDefault(require("../interfaces/http/routes/students/studentRoutes"));
 const systemRoutes_1 = __importDefault(require("../interfaces/http/routes/system/systemRoutes"));
 const mediaRoutes_1 = __importDefault(require("../interfaces/http/routes/media/mediaRoutes"));
+const appVersionRoutes_1 = __importDefault(require("../interfaces/http/routes/appVersionRoutes"));
 // Middleware
 const errorHandler_1 = require("../shared/middleware/errorHandler");
 const authMiddleware_1 = require("../shared/middleware/authMiddleware");
@@ -67,7 +68,8 @@ app.get('/', (_req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // Public Routes (no authentication required)
 app.use('/api/auth', userRoutes_1.default); // Authentication & user management (login, register)
-// Protected Routes (require authentication with IP validation)
+app.use('/api/version', appVersionRoutes_1.default); // App version management (GET, POST, PUT)
+// Protected Routes (require authentication)
 app.use('/api/academic', authMiddleware_1.authenticate, academicRoutes_1.default); // Academic operations (areas, subjects, simulacros)
 app.use('/api/students', authMiddleware_1.authenticate, studentRoutes_1.default); // Student management & ranking
 app.use('/api/system', authMiddleware_1.authenticate, systemRoutes_1.default); // System utilities & CRUD operations
@@ -97,11 +99,12 @@ server.listen(port, () => __awaiter(void 0, void 0, void 0, function* () {
         console.log(`🚀 FormarTE API listening at http://localhost:${port}`);
         console.log(`📡 WebSocket endpoint: ws://localhost:${port}/ws/notifications`);
         console.log('\n═══════════════════════════════════════════════════════════════');
-        console.log('🌟 FORMARTE API - UNIFIED STRUCTURE WITH IP VALIDATION');
+        console.log('🌟 FORMARTE API - UNIFIED STRUCTURE');
         console.log('═══════════════════════════════════════════════════════════════');
         console.log('\n📋 Public Routes (No Auth):');
         console.log('  🔓 Auth:      /api/auth/*      - Login, Register, Logout');
-        console.log('\n📋 Protected Routes (Auth + IP Validation Required):');
+        console.log('  🔓 Version:   /api/version     - App version (GET, POST, PUT)');
+        console.log('\n📋 Protected Routes (Auth Required):');
         console.log('  🔐 Academic:  /api/academic/*  - Areas, subjects, simulacros');
         console.log('  🔐 Students:  /api/students/*  - Student management & ranking');
         console.log('  🔐 System:    /api/system/*    - System utilities & CRUD');
@@ -112,7 +115,7 @@ server.listen(port, () => __awaiter(void 0, void 0, void 0, function* () {
         console.log('\n📋 Legacy Routes (Protected):');
         console.log('  🔐 Simulacro: /simulacro/*     - Mobile CRUD operations');
         console.log('  🔐 Progress:  /progress-app/*  - Progress tracking');
-        console.log('\n🔒 Security: All protected routes validate JWT + IP address');
+        console.log('\n🔒 Security: All protected routes validate JWT tokens');
         console.log('═══════════════════════════════════════════════════════════════');
         (0, positionTracker_1.startTrackingPositions)();
     }

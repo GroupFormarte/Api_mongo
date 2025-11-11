@@ -69,7 +69,7 @@ class UserService {
     }
     validateSession(token, ipAddress) {
         return __awaiter(this, void 0, void 0, function* () {
-            const session = yield this.sessionStorage.validateSession(token, ipAddress);
+            const session = yield this.sessionStorage.validateSession(token);
             return session !== null;
         });
     }

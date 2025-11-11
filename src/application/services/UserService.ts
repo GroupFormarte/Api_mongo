@@ -84,7 +84,7 @@ export class UserService {
   }
 
   async validateSession(token: string, ipAddress: string): Promise<boolean> {
-    const session = await this.sessionStorage.validateSession(token, ipAddress);
+    const session = await this.sessionStorage.validateSession(token);
     return session !== null;
   }
 
