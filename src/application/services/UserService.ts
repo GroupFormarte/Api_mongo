@@ -2,7 +2,6 @@ import { UserEntity, UserMetadata } from '../../domain/entities/UserEntity';
 import { SessionEntity } from '../../domain/entities/SessionEntity';
 import { SessionStoragePort } from '../ports/SessionStoragePort';
 import { authService } from './AuthService';
-import jwt from 'jsonwebtoken';
 
 export interface UserStoragePort {
   saveUser(metadata: UserMetadata): Promise<UserMetadata>;
@@ -55,13 +54,14 @@ export class UserService {
       throw new Error('Invalid credentials');
     }
 
-    const token = jwt.sign(
-      { userId: user.number_id, email: user.email },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
-    );
+    // Generate JWT using AuthService (same format as loginUserWithPodium)
+    const token = authService.generateJWT(user.number_id, {
+      id: user.number_id,
+      email: user.email,
+      name: user.name
+    });
 
-    // Create session with IP validation
+    // Create session
     const sessionEntity = SessionEntity.create(
       user.number_id,
       token,

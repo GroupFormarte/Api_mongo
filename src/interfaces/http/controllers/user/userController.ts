@@ -3,7 +3,7 @@ import { UserService } from '../../../../application/services/UserService';
 import { MongoUserStorage } from '../../../../infrastructure/database/MongoUserStorage';
 import { MongoSessionStorage } from '../../../../infrastructure/database/MongoSessionStorage';
 import { ResponseHandler } from '../../../../shared/utils/responseHandler';
-import { getClientIp, getUserAgent, AuthRequest } from '../../../../shared/middleware/authMiddleware';
+import { getUserAgent, AuthRequest } from '../../../../shared/middleware/authMiddleware';
 
 
 const userService = new UserService(new MongoUserStorage(), new MongoSessionStorage());
@@ -66,8 +66,8 @@ export const loginUser = async (req: Request, res: Response) => {
       return ResponseHandler.badRequest(res, 'Email and password are required');
     }
 
-    // Get client context
-    const ipAddress = getClientIp(req);
+    // Get client context (IP validation removed)
+    const ipAddress = 'not-validated';
     const userAgent = getUserAgent(req);
 
     const result = await userService.loginUser(email, password, {
@@ -137,14 +137,14 @@ export const loginUserWithPodium = async (req: Request, res: Response) => {
 
 
     console.log({ userId, token });
-    
+
 
     if (!userId || !token) {
       return ResponseHandler.badRequest(res, 'userId and podiumToken are required');
     }
 
-    // Get client context
-    const ipAddress = getClientIp(req);
+    // Get client context (IP validation removed)
+    const ipAddress = 'not-validated';
     const userAgent = getUserAgent(req);
 
     const result = await userService.loginUserWithPodium(userId, token, {
@@ -178,8 +178,8 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
 
     const token = authHeader.substring(7);
 
-    // Get client context
-    const ipAddress = getClientIp(req);
+    // Get client context (IP validation removed)
+    const ipAddress = 'not-validated';
     const userAgent = getUserAgent(req);
 
     const result = await userService.refreshToken(token, {
