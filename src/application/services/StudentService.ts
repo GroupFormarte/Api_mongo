@@ -90,7 +90,7 @@ export class StudentService {
     return await this.repository.create(collectionName, documentData);
   }
 
-  async removeExamenAsignado(ids_estudiantes: string[], id_simulacro: string): Promise<{updated: string[], notFound: string[]}> {
+  async removeExamenAsignado(ids_estudiantes: string[], id_simulacro: string,classroomId:string): Promise<{updated: string[], notFound: string[]}> {
     const updated: string[] = [];
     const notFound: string[] = [];
 
@@ -105,7 +105,7 @@ export class StudentService {
 
       if (student.examenes_asignados && Array.isArray(student.examenes_asignados)) {
         const originalLength = student.examenes_asignados.length;
-        student.examenes_asignados = student.examenes_asignados.filter((examen: any) => examen.id_simulacro !== id_simulacro);
+        student.examenes_asignados = student.examenes_asignados.filter((examen: any) => examen.id_simulacro !== id_simulacro&& examen.classroomId!==classroomId);
         if (originalLength !== student.examenes_asignados.length) {
           await this.repository.updateById('students', student._id, { examenes_asignados: student.examenes_asignados });
           updated.push(id_estudiante);

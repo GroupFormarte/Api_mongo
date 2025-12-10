@@ -106,8 +106,9 @@ router.post('/bulk-create-unique', asyncHandler(async (req: Request, res: Respon
 
 // Remove examen asignado by id_simulacro from multiple students
 router.post('/remove-examen', asyncHandler(async (req: Request, res: Response) => {
-  const { ids_estudiantes, simulationId } = req.body;
+  const { ids_estudiantes, simulationId,classroomId } = req.body;
 const id_simulacro= simulationId;
+
   if (!Array.isArray(ids_estudiantes) || ids_estudiantes.length === 0) {
     return ApiResponse.badRequest(res, 'Se requiere un array de ids_estudiantes');
   }
@@ -116,7 +117,7 @@ const id_simulacro= simulationId;
     return ApiResponse.badRequest(res, 'Se requiere el id_simulacro');
   }
 
-  const result = await studentService.removeExamenAsignado(ids_estudiantes, id_simulacro);
+  const result = await studentService.removeExamenAsignado(ids_estudiantes, id_simulacro,classroomId);
 
   return ApiResponse.bulk(res, {
     successful: result.updated,
