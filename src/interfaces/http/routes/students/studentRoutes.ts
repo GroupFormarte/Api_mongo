@@ -216,8 +216,9 @@ router.get('/:collectionName', asyncHandler(async (req: Request, res: Response) 
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   const paginatedResult = result.slice(startIndex, endIndex);
+  return ApiResponse.success(res, result, 'Students retrieved successfully');
 
-  return ApiResponse.paginated(res, paginatedResult, page, limit, result.length, 'Students retrieved successfully');
+  // return ApiResponse.paginated(res, paginatedResult, page, limit, result.length, 'Students retrieved successfully');
 }));
 
 // Create student

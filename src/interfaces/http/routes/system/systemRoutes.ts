@@ -76,8 +76,9 @@ router.get('/:collectionName', asyncHandler(async (req: Request, res: Response) 
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   const paginatedResult = documents.slice(startIndex, endIndex);
+  return ApiResponse.success(res, documents, 'Students retrieved successfully');
 
-  return ApiResponse.paginated(res, paginatedResult, page, limit, documents.length, 'Documents retrieved successfully');
+  // return ApiResponse.paginated(res, paginatedResult, page, limit, documents.length, 'Documents retrieved successfully');
 }));
 
 // Get document by ID
