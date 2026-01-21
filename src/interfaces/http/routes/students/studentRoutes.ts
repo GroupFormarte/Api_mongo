@@ -29,8 +29,9 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   const paginatedResult = result.slice(startIndex, endIndex);
+  return ApiResponse.success(res, result, 'Students retrieved successfully');
 
-  return ApiResponse.paginated(res, paginatedResult, page, limit, result.length, 'Students retrieved successfully');
+  // return ApiResponse.paginated(res, paginatedResult, page, result.length, result.length, 'Students retrieved successfully');
 }));
 
 router.get('/get-my-position/:grado/:id_student', asyncHandler(async (req: Request, res: Response) => {
