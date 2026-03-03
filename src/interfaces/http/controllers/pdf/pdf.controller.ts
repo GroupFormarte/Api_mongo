@@ -72,11 +72,11 @@ export const generateReport = async (req: Request, res: Response) => {
   // Respuesta vacía si no se descarga directamente
   res.status(202).send({ message: 'Generación en proceso' });
 
-  // Opción: borrar el archivo después de 5 minutos
+  // Opción: borrar el archivo después de 30 minutos
   setTimeout(() => {
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
       console.log(`Archivo temporal eliminado: ${filePath}`);
     }
-  }, 5 * 60 * 1000); 
+  }, 30 * 60 * 1000);
 };
