@@ -7,10 +7,10 @@ import { DynamicRepository } from '../../../../infrastructure/repositories/Dynam
 const router = Router();
 const studentService = new StudentService();
 const repository = new DynamicRepository();
+
 // Get student by id_estudiante query parameter (without collection)
 router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const { id_estudiante } = req.query;
-
 
   if (id_estudiante) {
     const result = await studentService.getStudentByStudentId('students', id_estudiante as string);
@@ -25,7 +25,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const limit = parseInt(req.query.limit as string) || 50;
 
   const result = await studentService.getAllStudents('students');
-  
+
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   const paginatedResult = result.slice(startIndex, endIndex);
@@ -37,9 +37,8 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
 router.get('/get-my-position/:grado/:id_student', asyncHandler(async (req: Request, res: Response) => {
   const { id_student, grado } = req.params;
   console.log({ id_student, grado });
-  
-  const result = await studentService.getStudentPosition(grado, id_student);
 
+  const result = await studentService.getStudentPosition(grado, id_student);
 
   return ApiResponse.success(res, result, ' successfully');
 }));
@@ -52,28 +51,28 @@ router.get('/position/:grado/:id_student', asyncHandler(async (req: Request, res
   return ApiResponse.success(res, result, 'Student position retrieved successfully');
 }));
 
-
 // Obtener documento por ID de estudiante
 router.get('/:collectionName/convert_id/:id', asyncHandler(async (req: Request, res: Response) => {
   const { collectionName, id } = req.params;
   const result = await studentService.getStudentByStudentId(collectionName, id);
-  
+
   if (!result) {
     throw new AppError('Estudiante no encontrado', 404);
   }
-   return ApiResponse.success(res, result, 'Student position retrieved successfully');
+  return ApiResponse.success(res, result, 'Student position retrieved successfully');
 }));
+
 // Bulk update students
 router.put('/bulk-update', asyncHandler(async (req: Request, res: Response) => {
 
   const { updates } = req.body;
-const students= updates;
+  const students = updates;
   if (!Array.isArray(students) || students.length === 0) {
     return ApiResponse.badRequest(res, 'Se requiere un array de estudiantes para actualizar');
   }
 
   const result = await studentService.updateStudentsBulk("students", students);
-  
+
   return ApiResponse.bulk(res, {
     successful: result.updated,
     failed: result.notFound.map(id => ({ id, reason: 'Not found' })),
@@ -90,16 +89,13 @@ router.post('/bulk-create-unique', asyncHandler(async (req: Request, res: Respon
     return ApiResponse.badRequest(res, 'Se requiere un array de estudiantes');
   }
 
-
-  
-  
   const result = await studentService.createStudentsUnique('students', students);
 
   return ApiResponse.bulk(res, {
     successful: result.created,
-    failed: result.existing.map((student: any) => ({ 
-      id: student.id_estudiante, 
-      reason: 'Already exists' 
+    failed: result.existing.map((student: any) => ({
+      id: student.id_estudiante,
+      reason: 'Already exists'
     })),
     total: students.length
   }, 'Bulk create completed');
@@ -107,8 +103,8 @@ router.post('/bulk-create-unique', asyncHandler(async (req: Request, res: Respon
 
 // Remove examen asignado by id_simulacro from multiple students
 router.post('/remove-examen', asyncHandler(async (req: Request, res: Response) => {
-  const { ids_estudiantes, simulationId,classroomId } = req.body;
-const id_simulacro= simulationId;
+  const { ids_estudiantes, simulationId, classroomId } = req.body;
+  const id_simulacro = simulationId;
 
   if (!Array.isArray(ids_estudiantes) || ids_estudiantes.length === 0) {
     return ApiResponse.badRequest(res, 'Se requiere un array de ids_estudiantes');
@@ -118,7 +114,7 @@ const id_simulacro= simulationId;
     return ApiResponse.badRequest(res, 'Se requiere el id_simulacro');
   }
 
-  const result = await studentService.removeExamenAsignado(ids_estudiantes, id_simulacro,classroomId);
+  const result = await studentService.removeExamenAsignado(ids_estudiantes, id_simulacro, classroomId);
 
   return ApiResponse.bulk(res, {
     successful: result.updated,
@@ -130,7 +126,7 @@ const id_simulacro= simulationId;
 // Get student by ID
 router.get('/:collectionName/:id', asyncHandler(async (req: Request, res: Response) => {
   const { collectionName, id } = req.params;
-console.log(collectionName, id);
+  console.log(collectionName, id);
 
   const result = await studentService.getStudentById(collectionName, id);
   if (!result) {
@@ -139,8 +135,6 @@ console.log(collectionName, id);
 
   return ApiResponse.success(res, result, 'Student retrieved successfully');
 }));
-
-
 
 // Get student by student ID
 router.get('/:collectionName/by-student-id/:id', asyncHandler(async (req: Request, res: Response) => {
@@ -182,15 +176,14 @@ router.put('/:id', asyncHandler(async (req: Request, res: Response) => {
 router.put('/:collectionName/:id', asyncHandler(async (req: Request, res: Response) => {
   const { collectionName, id } = req.params;
   const data = req.body;
-  console.log({collectionName, id, data})
+  console.log({ collectionName, id, data })
   const document = await repository.updateById(collectionName, id, data);
   if (!document) {
     throw new AppError('Documento no encontrado', 404);
   }
-  
+
   res.status(200).json(document);
 }));
-
 
 // Delete student
 router.delete('/:collectionName/:id', asyncHandler(async (req: Request, res: Response) => {
@@ -211,7 +204,7 @@ router.get('/:collectionName', asyncHandler(async (req: Request, res: Response) 
   const limit = parseInt(req.query.limit as string) || 50;
 
   const result = await studentService.getAllStudents(collectionName);
-  
+
   // Simple pagination
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
