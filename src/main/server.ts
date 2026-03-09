@@ -31,7 +31,7 @@ import { authenticate } from '../shared/middleware/authMiddleware';
 dotenv.config();
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Initialize database connection
 const dbConnection = DatabaseConnection.getInstance();
@@ -227,7 +227,7 @@ server.listen(port, async () => {
     // Connect to database
     await dbConnection.connect();
 
-    console.log(`🚀 FormarTE API listening at http://localhost:${port}`);
+    console.log(`🚀 FormarTE API listening at http://localhost:${port}/api`);
     console.log(`📡 WebSocket endpoint: ws://localhost:${port}/ws/notifications`);
     console.log('\n═══════════════════════════════════════════════════════════════');
     console.log('🌟 FORMARTE API - UNIFIED STRUCTURE');
