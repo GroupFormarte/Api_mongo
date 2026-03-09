@@ -6,9 +6,7 @@ import ApiResponse from '../../../../shared/utils/ApiResponse';
 const router = Router();
 const repository = new DynamicRepository();
 
-// ================================================
 // GENERIC CRUD OPERATIONS
-// ================================================
 
 // Get documents by IDs in bulk (generic)
 router.post('/:collectionName/bulk', asyncHandler(async (req: Request, res: Response) => {
@@ -27,7 +25,6 @@ router.post('/:collectionName/bulk', asyncHandler(async (req: Request, res: Resp
 
   return ApiResponse.success(res, documents, 'Documents retrieved successfully');
 }));
-
 
 
 // Search documents by dynamic field
@@ -69,7 +66,6 @@ router.get('/:collectionName', asyncHandler(async (req: Request, res: Response) 
   const { collectionName } = req.params;
   const page = parseInt(req.query.page as string) || 1;
 
-
   const documents = await repository.find(collectionName);
   const limit = parseInt(req.query.limit as string) || documents.length;
   // Simple pagination
@@ -77,7 +73,6 @@ router.get('/:collectionName', asyncHandler(async (req: Request, res: Response) 
   const endIndex = startIndex + limit;
   const paginatedResult = documents.slice(startIndex, endIndex);
   return ApiResponse.success(res, documents, 'Students retrieved successfully');
-
   // return ApiResponse.paginated(res, paginatedResult, page, limit, documents.length, 'Documents retrieved successfully');
 }));
 
@@ -189,11 +184,7 @@ router.delete('/:collectionName/:id', asyncHandler(async (req: Request, res: Res
   return ApiResponse.deleted(res, 'Document deleted successfully');
 }));
 
-
-
-// ================================================
 // SYSTEM UTILITIES
-// ================================================
 
 // Get cache statistics
 router.get('/system/cache/stats', asyncHandler(async (req: Request, res: Response) => {

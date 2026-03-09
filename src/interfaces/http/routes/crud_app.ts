@@ -4,7 +4,6 @@ import createDynamicModel from '../../../infrastructure/database/dynamicModel';
 import dotenv from 'dotenv';
 import { removeLastS } from '../../../shared/utils/utils';
 
-
 // Cargar las variables de entorno
 dotenv.config();
 
@@ -51,77 +50,67 @@ const buildResult = async (documents: any[], GradosModel: mongoose.Model<any>, A
 
     // if (tipo_platform == "Examen") {
 
-      if (grado == "Preuniversitario Unal") {
-/* matemáticas, ciencias naturales, ciencias sociales, análisis textual y análisis de imagen */
+    if (grado == "Preuniversitario Unal") {
+      /* matemáticas, ciencias naturales, ciencias sociales, análisis textual y análisis de imagen */
 
- if(area.trim().includes('Imagen')){
-        console.log({ grado, area });
- }
+      if (area.trim().includes('Imagen')) console.log({ grado, area });
 
-  
-        if(area.trim() =='Matemáticas' ||area.trim()=='Ciencias Sociales' ||area.trim() =='Ciencias Naturales' || area.trim() =='Análisis Textual' || area.trim() =='Análisis de la Imagen'){
-   
+      if (area.trim() == 'Matemáticas' || area.trim() == 'Ciencias Sociales' || area.trim() == 'Ciencias Naturales' || area.trim() == 'Análisis Textual' || area.trim() == 'Análisis de la Imagen') {
 
-
-
-
-
-      if (!result[grado]) {
-        result[grado] = {
-          areas: [],
-          competencias: [],
-          componentes: [],
-          asignaturas: [],
-          childrents: []
-        };
-      }
-
-      if (area !== 'N/A' && !result[grado].areas.find((a: any) => a.nombre === area)) {
-        result[grado].areas.push({
-          nombre: area,
-          sessions: {
-            session_1: 0,
-            session_2: 0
-          }
-        });
-
-        const are: any = await AreasModel.findOne({
-          value: area
-        })
-        if (!validateIdUnique(result[grado].childrents, are.id)) {
-          result[grado].childrents.push(are.id);
+        if (!result[grado]) {
+          result[grado] = {
+            areas: [],
+            competencias: [],
+            componentes: [],
+            asignaturas: [],
+            childrents: []
+          };
         }
-      }
 
-      if (asignatura !== 'N/A' && !result[grado].asignaturas.find((c: any) => c.nombre === asignatura)) {
-        result[grado].asignaturas.push({
-          nombre: asignatura,
-          sessions: {
-            session_1: 0,
-            session_2: 0
-          }
-        });
+        if (area !== 'N/A' && !result[grado].areas.find((a: any) => a.nombre === area)) {
+          result[grado].areas.push({
+            nombre: area,
+            sessions: {
+              session_1: 0,
+              session_2: 0
+            }
+          });
 
-      }
-      if (competencia !== 'N/A' && !result[grado].competencias.find((c: any) => c.nombre === competencia)) {
-        result[grado].competencias.push({
-          nombre: competencia,
-          sessions: {
-            session_1: 0,
-            session_2: 0
+          const are: any = await AreasModel.findOne({ value: area })
+          if (!validateIdUnique(result[grado].childrents, are.id)) {
+            result[grado].childrents.push(are.id);
           }
-        });
-      }
+        }
 
-      if (componente !== 'N/A' && !result[grado].componentes.find((c: any) => c.nombre === componente)) {
-        result[grado].componentes.push({
-          nombre: componente,
-          sessions: {
-            session_1: 0,
-            session_2: 0
-          }
-        });
-      }
+        if (asignatura !== 'N/A' && !result[grado].asignaturas.find((c: any) => c.nombre === asignatura)) {
+          result[grado].asignaturas.push({
+            nombre: asignatura,
+            sessions: {
+              session_1: 0,
+              session_2: 0
+            }
+          });
+
+        }
+        if (competencia !== 'N/A' && !result[grado].competencias.find((c: any) => c.nombre === competencia)) {
+          result[grado].competencias.push({
+            nombre: competencia,
+            sessions: {
+              session_1: 0,
+              session_2: 0
+            }
+          });
+        }
+
+        if (componente !== 'N/A' && !result[grado].componentes.find((c: any) => c.nombre === componente)) {
+          result[grado].componentes.push({
+            nombre: componente,
+            sessions: {
+              session_1: 0,
+              session_2: 0
+            }
+          });
+        }
       }
 
     }
@@ -131,8 +120,6 @@ const buildResult = async (documents: any[], GradosModel: mongoose.Model<any>, A
 
   for (const element of docGrados) {
     const grado = element.value;
-
-
 
     if (result[grado]) {
       if (!element.config_simulacro || !element.childrents) {
@@ -180,16 +167,12 @@ const buildResult = async (documents: any[], GradosModel: mongoose.Model<any>, A
         mergeConfigs(existingConfig, result[grado]);
 
         // Guardar la configuración actualizada
-
         // console.log({configFinal,
         // childrents});
-
         await GradosModel.findByIdAndUpdate(element._id, {
           config_simulacro: configFinal,
           childrents: childrents
         }, { new: true, runValidators: true });
-
-
 
       }
     }
@@ -263,7 +246,6 @@ router.get('/generate-simulacro/:id/:type', async (req: Request, res: Response) 
         const pregunta = await getData("Preguntas", doc.pregunta);
         const respuestas = await Promise.all(doc.respuestas.map(async (r: any) => await getData("Respuestas", r)));
 
-
         return {
           ...doc.toObject(),
           pregunta,
@@ -286,7 +268,6 @@ router.get('/generate-simulacro/:id/:type', async (req: Request, res: Response) 
   }
 })
 
-
 router.get('/detail_preguntas', async (req: Request, res: Response) => {
   const DynamicModel = createDynamicModel('detail_preguntas', {});
   const GradosModel = createDynamicModel('Grados', {});
@@ -305,9 +286,6 @@ router.get('/detail_preguntas', async (req: Request, res: Response) => {
   }
 });
 
-
-
-
 async function getData(collection: string, id: string) {
   const DynamicModel = createDynamicModel(collection, {});
   try {
@@ -319,8 +297,6 @@ async function getData(collection: string, id: string) {
     return undefined;
   }
 }
-
-//_____________
 
 // Función para clonar una base de datos
 async function cloneDatabase(sourceUri: string, targetUri: string, sourceDbName: string, targetDbName: string): Promise<void> {

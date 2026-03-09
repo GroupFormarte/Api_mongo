@@ -6,7 +6,15 @@ import ApiResponse from '../../../../shared/utils/ApiResponse';
 const router = Router();
 const academicService = new AcademicService();
 
-// Get areas by IDs in bulk
+/**
+ * Endpoint: Obtener areas por ids (masivo).
+ * Para que sirve:
+ * - Traer varias areas de un grado en una sola consulta.
+ * Recibe:
+ * - Body: { grado, ids[] }
+ * Responde:
+ * - Lista de areas encontradas.
+ */
 router.post('/areas/bulk', asyncHandler(async (req: Request, res: Response) => {
   const { grado, ids } = req.body;
 
@@ -17,17 +25,46 @@ router.post('/areas/bulk', asyncHandler(async (req: Request, res: Response) => {
   const result = await academicService.getAreasByIds(grado, ids);
   return ApiResponse.success(res, result, 'Areas retrieved successfully');
 }));
+
+/**
+ * Endpoint: Generar simulacro (alias 1).
+ * Para que sirve:
+ * - Armar un simulacro con preguntas segun grado/valor y cantidad.
+ * Recibe:
+ * - Params: value, cantidad
+ * Responde:
+ * - Estructura del simulacro generado.
+ */
 router.get('/generate-simulacro/:value/:cantidad', asyncHandler(async (req: Request, res: Response) => {
   const { value, cantidad } = req.params;
   const result = await academicService.generateSimulacro(value, cantidad);
    return ApiResponse.success(res, result, 'Subjects retrieved successfully');
 }));
+
+/**
+ * Endpoint: Obtener areas por ids (compatibilidad).
+ * Para que sirve:
+ * - Hace lo mismo que /areas/bulk, pero en una ruta alternativa.
+ * Recibe:
+ * - Body: { grado, ids[] }
+ * Responde:
+ * - Lista de areas encontradas.
+ */
 router.post('/get-areas/bulk', asyncHandler(async (req: Request, res: Response) => {
   const { grado, ids } = req.body;
   const result = await academicService.getAreasByIds(grado, ids);
   res.status(200).json(result);
 }));
-// Get subjects by IDs in bulk
+
+/**
+ * Endpoint: Obtener asignaturas por ids (masivo).
+ * Para que sirve:
+ * - Traer varias asignaturas de un grado en una sola consulta.
+ * Recibe:
+ * - Body: { grado, ids[] }
+ * Responde:
+ * - Lista de asignaturas encontradas.
+ */
 router.post('/subjects/bulk', asyncHandler(async (req: Request, res: Response) => {
   const { grado, ids } = req.body;
 
@@ -39,7 +76,15 @@ router.post('/subjects/bulk', asyncHandler(async (req: Request, res: Response) =
   return ApiResponse.success(res, result, 'Subjects retrieved successfully');
 }));
 
-// Get subject by ID
+/**
+ * Endpoint: Obtener una asignatura por id.
+ * Para que sirve:
+ * - Consultar el detalle de una asignatura especifica por grado.
+ * Recibe:
+ * - Params: idAsignature, valueGrado
+ * Responde:
+ * - Asignatura encontrada, o 404 si no existe.
+ */
 router.get('/subjects/:idAsignature/:valueGrado', asyncHandler(async (req: Request, res: Response) => {
   const { idAsignature, valueGrado } = req.params;
 
@@ -51,7 +96,15 @@ router.get('/subjects/:idAsignature/:valueGrado', asyncHandler(async (req: Reque
   return ApiResponse.success(res, result, 'Subject retrieved successfully');
 }));
 
-// Generate simulacro
+/**
+ * Endpoint: Generar simulacro (ruta principal).
+ * Para que sirve:
+ * - Construir un simulacro con la cantidad de preguntas solicitada.
+ * Recibe:
+ * - Params: value, cantidad
+ * Responde:
+ * - Simulacro generado.
+ */
 router.get('/simulacro/:value/:cantidad', asyncHandler(async (req: Request, res: Response) => {
   const { value, cantidad } = req.params;
 
@@ -59,7 +112,15 @@ router.get('/simulacro/:value/:cantidad', asyncHandler(async (req: Request, res:
   return ApiResponse.success(res, result, 'Simulacro generated successfully');
 }));
 
-// Get question by ID
+/**
+ * Endpoint: Obtener pregunta por id.
+ * Para que sirve:
+ * - Consultar una pregunta especifica por su identificador.
+ * Recibe:
+ * - Params: idquestion (idProgram es opcional y no se usa aqui)
+ * Responde:
+ * - Pregunta encontrada, o 404 si no existe.
+ */
 router.get('/questions/:idquestion/:idProgram?', asyncHandler(async (req: Request, res: Response) => {
   const { idquestion } = req.params;
 
@@ -71,7 +132,15 @@ router.get('/questions/:idquestion/:idProgram?', asyncHandler(async (req: Reques
   return ApiResponse.success(res, result, 'Question retrieved successfully');
 }));
 
-// Get questions by type and area
+/**
+ * Endpoint: Obtener preguntas por programa y area/tipo.
+ * Para que sirve:
+ * - Traer preguntas filtradas por programa y valor de clasificacion.
+ * Recibe:
+ * - Params: idPrograma, type, value (type no se usa en esta implementacion)
+ * Responde:
+ * - Lista de preguntas filtradas.
+ */
 router.get('/questions-by-type/:idPrograma/:type/:value', asyncHandler(async (req: Request, res: Response) => {
   const { idPrograma, value } = req.params;
 
@@ -79,7 +148,15 @@ router.get('/questions-by-type/:idPrograma/:type/:value', asyncHandler(async (re
   return ApiResponse.success(res, result, 'Questions retrieved successfully');
 }));
 
-// Get academic level by score
+/**
+ * Endpoint: Obtener nivel academico por puntaje.
+ * Para que sirve:
+ * - Calcular o consultar el nivel academico segun coleccion, id y score.
+ * Recibe:
+ * - Params: collectionName, id, score
+ * Responde:
+ * - Nivel academico correspondiente.
+ */
 router.get('/academic-level/:collectionName/:id/:score', asyncHandler(async (req: Request, res: Response) => {
   const { collectionName, id, score } = req.params;
 
@@ -87,6 +164,15 @@ router.get('/academic-level/:collectionName/:id/:score', asyncHandler(async (req
   return ApiResponse.success(res, result, 'Academic level retrieved successfully');
 }));
 
+/**
+ * Endpoint: Obtener preguntas por tipo (compatibilidad).
+ * Para que sirve:
+ * - Hace lo mismo que /questions-by-type con respuesta directa en JSON.
+ * Recibe:
+ * - Params: idPrograma, type, value (type no se usa en esta implementacion)
+ * Responde:
+ * - Lista de preguntas filtradas.
+ */
 router.get('/preguntas-por-tipo/:idPrograma/:type/:value', asyncHandler(async (req: Request, res: Response) => {
   const { idPrograma, value } = req.params;
   const result = await academicService.getQuestionsByTypeAndArea(idPrograma, value);

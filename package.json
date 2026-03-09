@@ -9,6 +9,9 @@
     "test:coverage": "jest --coverage",
     "start": "NODE_ENV=prod NODE_OPTIONS='--trace-deprecation' node build/main/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/main/server.ts",
+    "migration":"ts-node src/scripts/migrations/addCalibrationFieldsToContadoresPreguntas.ts",
+    "recalcular": "ts-node src/scripts/migrations/recalcularContadoresDesdeResultados.ts",
+    "migrar-students": "ts-node src/scripts/migrations/migrarStudentsAResultados.ts",
     "build": "tsc -p ."
   },
   "keywords": [],

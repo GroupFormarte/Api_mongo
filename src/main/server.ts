@@ -24,6 +24,7 @@ import studentRoutes from '../interfaces/http/routes/students/studentRoutes';
 import systemRoutes from '../interfaces/http/routes/system/systemRoutes';
 import mediaRoutes from '../interfaces/http/routes/media/mediaRoutes';
 import appVersionRoutes from '../interfaces/http/routes/appVersionRoutes';
+import scoringRoutes from '../interfaces/http/routes/scoringRoutes';
 
 // Middleware
 import { errorHandler, notFoundHandler } from '../shared/middleware/errorHandler';
@@ -190,6 +191,7 @@ app.get('/', (_req: Request, res: Response) => {
 // Public Routes (no authentication required)
 app.use('/api/auth', userRoutes);               // Authentication & user management (login, register)
 app.use('/api/version', appVersionRoutes);      // App version management (GET, POST, PUT)
+app.use('/api/scoring', scoringRoutes);
 
 // Protected Routes (require authentication)
 app.use('/api/academic', authenticate, academicRoutes);      // Academic operations (areas, subjects, simulacros)
