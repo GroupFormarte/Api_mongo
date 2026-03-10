@@ -286,6 +286,7 @@ export class SemiIrtScoringService {
     correctAnswers: number;
     incorrectAnswers: number;
     totalAnswered: number;
+    areas: PuntajeArea[];
   }>> {
 
     // 1. Calcular puntaje global por estudiante
@@ -348,6 +349,7 @@ export class SemiIrtScoringService {
         correctAnswers: p.correctAnswers,
         incorrectAnswers: p.incorrectAnswers,
         totalAnswered: p.correctAnswers + p.incorrectAnswers,
+        areas: p.areas,
       };
 
       // students (colección activa)
