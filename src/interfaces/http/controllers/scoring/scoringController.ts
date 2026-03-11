@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { SemiIrtScoringService } from '../../../../application/services/SemiIrtScoringService';
+import { UnalScoringService } from '../../../../application/services/UnalScoringService';
 
 function getDb(): mongoose.mongo.Db {
     const db = mongoose.connection.db;
@@ -22,6 +23,27 @@ export async function calcularBatchSaber11(req: Request, res: Response) {
         const service = new SemiIrtScoringService(getDb());
         const resultados = await service.calcularBatch(idInstituto, idSimulacro ?? null, estudiantes);
         return res.status(200).json({ ok: true, resultados });
+    } catch (err: unknown) {
+        const mensaje = err instanceof Error ? err.message : 'Error desconocido';
+        return res.status(500).json({ ok: false, error: mensaje });
+    }
+}
+
+export async function calcularBatchUnal(req: Request, res: Response) {
+    const { idInstituto, idSimulacro, estudiantes } = req.body;
+
+    if (!idInstituto || !Array.isArray(estudiantes) || estudiantes.length === 0) {
+        return res.status(400).json({
+            ok: false,
+            error: 'Se requieren: idInstituto, estudiantes[]'
+        });
+    }
+
+    try {
+        const service = new UnalScoringService(getDb());
+        const resultados = await service.calcularBatch(idInstituto, idSimulacro ?? null, estudiantes);
+        return res.status(200).json({ ok: true, resultados });
+
     } catch (err: unknown) {
         const mensaje = err instanceof Error ? err.message : 'Error desconocido';
         return res.status(500).json({ ok: false, error: mensaje });

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   calcularBatchSaber11,
+  calcularBatchUnal,
   recalibrarScoring,
 } from '../controllers/scoring/scoringController';
 
@@ -24,6 +25,15 @@ const router = Router();
  * }
  */
 router.post('/saber11/calcular-batch', calcularBatchSaber11);
+
+
+/**
+* Calcula puntajes UNAL para un grupo. Mismo patrón que saber11/calcular-batch.
+* Áreas: 0–15 (escala UNAL). Global: 0–1000 (media=500, SD=100).
+*
+* Body: { idInstituto, idSimulacro, estudiantes: [{ idEstudiante, subjects[] }] }
+ */
+router.post('/unal/calcular-batch', calcularBatchUnal);
 
 /**
  * Recalcula difficulty y weight en contadores_preguntas
