@@ -1,71 +1,24 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
+import { AreaUdea, PuntajeAreaUdea, ResultadoGrupoUdea, ResultadoUdea, StudentFromFlutter } from "../../domain/interfaces/udeaInterfaces";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
-// Estructura que Flutter manda (subjects ya calculados)
-interface SubjectFromFlutter {
-  name: string;
-  correctAnswers: number;
-  incorrectAnswers: number;
-}
-
-interface AssignedExamFromFlutter {
-  idSimulacro: string;
-  score?: number;
-  position?: number;
-  materias?: SubjectFromFlutter[];    // puede venir como materias
-  subjects?: SubjectFromFlutter[];    // o como subjects
-}
-
-interface StudentFromFlutter {
-  id: string;
-  id_estudiante?: string;
-  studentId?: string;
-  name?: string;
-  presento?: boolean;  // ✅ Flutter lo calcula desde sessionResponses
-  examenes_asignados?: AssignedExamFromFlutter[];
-  assignedExams?: AssignedExamFromFlutter[];
-}
-
-export interface PuntajeAreaUdea {
-  area:     string;  // nombre real del área (ej: "Competencia Lectora")
-  aciertos: number;
-  total:    number;
-  media:    number;
-  sd:       number;
-  puntaje:  number;
-}
-
-export interface ResultadoUdea {
-  idEstudiante:  string;
-  nombre?:       string;
-  areas:         PuntajeAreaUdea[];
-  puntajeGlobal: number;
-  position:      number;
-  fechaCalculo:  Date;
-}
-
-export interface ResultadoGrupoUdea {
-  idSimulacro: string;
-  resultados:  ResultadoUdea[];
-  fechaCalculo: Date;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-type AreaUdea = 'razonamiento' | 'lectura';
 
 function mapAreaUdea(nombre: string): AreaUdea | null {
-  const n = nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  if (n.includes('razonamiento')) return 'razonamiento';
-  if (n.includes('lectora') || n.includes('lectura')) return 'lectura';
+  const n = nombre
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (n.includes("razonamiento")) return "razonamiento";
+  if (n.includes("lectora") || n.includes("lectura")) return "lectura";
   return null;
 }
 
 /**
  * SD poblacional ÷N — el grupo ES la población completa.
  */
-function calcularEstadisticas(aciertos: number[]): { media: number; sd: number } {
+function calcularEstadisticas(aciertos: number[]): {
+  media: number;
+  sd: number;
+} {
   const n = aciertos.length;
   if (n === 0) return { media: 0, sd: 1 };
   const media = aciertos.reduce((s, a) => s + a, 0) / n;
@@ -76,7 +29,9 @@ function calcularEstadisticas(aciertos: number[]): { media: number; sd: number }
 }
 
 function calcularPuntaje(aciertos: number, media: number, sd: number): number {
-  return parseFloat(Math.min(100, Math.max(0, 50 + 10 * ((aciertos - media) / sd))).toFixed(1));
+  return parseFloat(
+    Math.min(100, Math.max(0, 50 + 10 * ((aciertos - media) / sd))).toFixed(1),
+  );
 }
 
 // ─── Servicio ─────────────────────────────────────────────────────────────────
@@ -103,14 +58,13 @@ export class UdeaScoringService {
    * 5. Calcular posición (ranking)
    * 6. Guardar en colección Estudiantes
    */
-  async calcularDesdeFlutter(
-    students: StudentFromFlutter[],
-    idSimulacro: string,
-  ): Promise<ResultadoGrupoUdea> {
-
+  async calcularGrupo ( students: StudentFromFlutter[], idSimulacro: string): Promise<ResultadoGrupoUdea> {
     // 1. Extraer aciertos por área de cada estudiante
     // Map: idEstudiante → Map<areaKey, { nombre, correctas, total }>
-    const porEstudiante = new Map<string, Map<AreaUdea, { nombre: string; correctas: number; total: number }>>();
+    const porEstudiante = new Map<
+      string,
+      Map<AreaUdea, { nombre: string; correctas: number; total: number }>
+    >();
 
     for (const student of students) {
       const id = student.id ?? student.id_estudiante ?? student.studentId;
@@ -118,28 +72,32 @@ export class UdeaScoringService {
 
       // Buscar el examen del simulacro correcto
       const exams = student.examenes_asignados ?? student.assignedExams ?? [];
-      const exam = exams.find(e => e.idSimulacro === idSimulacro);
+      const exam = exams.find((e) => e.idSimulacro === idSimulacro);
       if (!exam) continue;
 
       const subjects = exam.subjects ?? [];
       if (!subjects.length) continue;
 
-      const areasMap = new Map<AreaUdea, { nombre: string; correctas: number; total: number }>();
+      const areasMap = new Map<
+        AreaUdea,
+        { nombre: string; correctas: number; total: number }
+      >();
 
       for (const subject of subjects) {
-        const areaKey = mapAreaUdea(subject.name ?? '');
+        const areaKey = mapAreaUdea(subject.name ?? "");
         if (!areaKey) continue;
 
         const existing = areasMap.get(areaKey);
         if (existing) {
           // Si hay dos subjects del mismo área, acumular
           existing.correctas += subject.correctAnswers ?? 0;
-          existing.total     += (subject.correctAnswers ?? 0) + (subject.incorrectAnswers ?? 0);
+          existing.total += (subject.correctAnswers ?? 0) + (subject.incorrectAnswers ?? 0);
         } else {
           areasMap.set(areaKey, {
-            nombre:    subject.name ?? '',
+            nombre: subject.name ?? "",
             correctas: subject.correctAnswers ?? 0,
-            total:     (subject.correctAnswers ?? 0) + (subject.incorrectAnswers ?? 0),
+            total:
+              (subject.correctAnswers ?? 0) + (subject.incorrectAnswers ?? 0),
           });
         }
       }
@@ -153,12 +111,15 @@ export class UdeaScoringService {
     // Flutter envía presento=true/false basado en sessionResponses (igual que el cálculo local)
     const presentadosIds = new Set<string>(
       students
-        .filter(s => s.presento === true)
-        .map(s => s.id ?? s.id_estudiante ?? s.studentId ?? '')
-        .filter(Boolean)
+        .filter((s) => s.presento === true)
+        .map((s) => s.id ?? s.id_estudiante ?? s.studentId ?? "")
+        .filter(Boolean),
     );
 
-    const presentados   = new Map<string, Map<AreaUdea, { nombre: string; correctas: number; total: number }>>();
+    const presentados = new Map<
+      string,
+      Map<AreaUdea, { nombre: string; correctas: number; total: number }>
+    >();
     const noPresentados = new Set<string>();
 
     for (const [id, areas] of porEstudiante) {
@@ -169,7 +130,9 @@ export class UdeaScoringService {
       }
     }
 
-    console.log(`[UdeA] Presentados: ${presentados.size} / ${porEstudiante.size}`);
+    console.log(
+      `[UdeA] Presentados: ${presentados.size} / ${porEstudiante.size}`,
+    );
 
     // 3. Media y SD poblacional por área — solo presentados
     const aciertosPorArea = new Map<AreaUdea, number[]>();
@@ -183,7 +146,9 @@ export class UdeaScoringService {
     const estadisticas = new Map<AreaUdea, { media: number; sd: number }>();
     for (const [areaKey, aciertos] of aciertosPorArea) {
       const est = calcularEstadisticas(aciertos);
-      console.log(`[UdeA] ${areaKey} → Media: ${est.media.toFixed(2)} | SD: ${est.sd.toFixed(2)}`);
+      console.log(
+        `[UdeA] ${areaKey} → Media: ${est.media.toFixed(2)} | SD: ${est.sd.toFixed(2)}`,
+      );
       estadisticas.set(areaKey, est);
     }
 
@@ -208,30 +173,36 @@ export class UdeaScoringService {
         const est = estadisticas.get(areaKey) ?? { media: 0, sd: 1 };
         const puntaje = calcularPuntaje(stats.correctas, est.media, est.sd);
 
-        // 🔍 LOG igual que Flutter
-        console.log(`[UdeA] ${nombrePorId.get(idEstudiante) ?? idEstudiante} | ${stats.nombre}: aciertos=${stats.correctas} media=${est.media.toFixed(2)} sd=${est.sd.toFixed(2)} → P=${puntaje}`);
+        //  LOG igual que Flutter
+        console.log(
+          `[UdeA] ${nombrePorId.get(idEstudiante) ?? idEstudiante} | ${stats.nombre}: aciertos=${stats.correctas} media=${est.media.toFixed(2)} sd=${est.sd.toFixed(2)} → P=${puntaje}`,
+        );
 
         areasDetalle.push({
-          area:     stats.nombre,
-          aciertos: stats.correctas,
-          total:    stats.total,
-          media:    parseFloat(est.media.toFixed(2)),
-          sd:       parseFloat(est.sd.toFixed(2)),
+          area: stats.nombre,
           puntaje,
+          correctas: stats.correctas,
+          incorrectas: stats.total - stats.correctas,
+          total: stats.total,
+          media: parseFloat(est.media.toFixed(2)),
+          sd: parseFloat(est.sd.toFixed(2)),
         });
 
         suma += puntaje;
         count++;
       }
 
-      const globalEstudiante = count > 0 ? parseFloat((suma / count).toFixed(1)) : 0;
-      console.log(`[UdeA] ${nombrePorId.get(idEstudiante) ?? idEstudiante} → global: ${globalEstudiante}`);
+      const globalEstudiante =
+        count > 0 ? parseFloat((suma / count).toFixed(1)) : 0;
+      console.log(
+        `[UdeA] ${nombrePorId.get(idEstudiante) ?? idEstudiante} → global: ${globalEstudiante}`,
+      );
 
       resultados.push({
         idEstudiante,
-        areas:         areasDetalle,
+        areas: areasDetalle,
         puntajeGlobal: globalEstudiante,
-        position:      0, // se calcula abajo
+        position: 0, // se calcula abajo
         fechaCalculo,
       });
     }
@@ -240,9 +211,9 @@ export class UdeaScoringService {
     for (const idEstudiante of noPresentados) {
       resultados.push({
         idEstudiante,
-        areas:         [],
+        areas: [],
         puntajeGlobal: 0,
-        position:      0,
+        position: 0,
         fechaCalculo,
       });
     }
@@ -267,22 +238,34 @@ export class UdeaScoringService {
   private async guardarResultados(resultados: ResultadoUdea[]): Promise<void> {
     if (resultados.length === 0) return;
 
-    const operations = resultados.map(r => ({
-      updateOne: {
-        filter: { id_student: r.idEstudiante },
-        update: {
+    for (const r of resultados) {
+      const enStudents = await this.db.collection("students").updateOne(
+        { id_estudiante: r.idEstudiante },
+        {
           $set: {
-            scoreUdea:       r.puntajeGlobal,
-            positionUdea:    r.position,
+            scoreUdea: r.puntajeGlobal,
+            positionUdea: r.position,
             lastCalculoUdea: r.fechaCalculo,
-            areasUdea:       r.areas,
-          }
+            areasUdea: r.areas,
+          },
         },
-        upsert: false,
+      );
+      // Solo si no existe en students, buscar en Estudiantes (legacy)
+      if (enStudents.matchedCount === 0) {
+        await this.db.collection("Estudiantes").updateOne(
+          { id_student: r.idEstudiante },
+          {
+            $set: {
+              scoreUdea: r.puntajeGlobal,
+              positionUdea: r.position,
+              lastCalculoUdea: r.fechaCalculo,
+              areasUdea: r.areas,
+            },
+          },
+        );
       }
-    }));
+    }
 
-    await this.db.collection('Estudiantes').bulkWrite(operations);
-    console.log(`[UdeA] ✅ Guardados ${operations.length} estudiantes en Estudiantes`);
+    console.log(`[UdeA] ✅ Guardados ${resultados.length} estudiantes`);
   }
 }
