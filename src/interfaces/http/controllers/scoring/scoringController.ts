@@ -72,6 +72,7 @@ export async function guardarRespuestasSaber11(req: Request, res: Response) {
 
         if (bulkOps.length > 0) {
             await db.collection('resultados_preguntas').bulkWrite(bulkOps, { ordered: false });
+            recalibrarContadores(db).catch(e => console.error('[Recalibrar]', e));
         }
 
         return res.status(200).json({ ok: true, guardadas: bulkOps.length });
@@ -168,25 +169,25 @@ export async function calcularUdea(req: Request, res: Response) {
     }
 
     try {
-      const db = getDb();
-      const service = new UdeaScoringService(db);
-      const resultado = await service.calcularGrupo(students, idSimulacro);
+        const db = getDb();
+        const service = new UdeaScoringService(db);
+        const resultado = await service.calcularGrupo(students, idSimulacro);
 
-      // Convertir lista → mapa { idEstudiante: result } igual que Saber
-      const resultados: Record<string, any> = {};
-      for (const r of resultado.resultados) {
-        resultados[r.idEstudiante] = {
-          position:        r.position,
-          score:           r.puntajeGlobal,
-          totalStudents:   resultado.resultados.length,
-          correctAnswers:  r.areas.reduce((s: number, a: any) => s + a.correctas, 0),
-          incorrectAnswers:r.areas.reduce((s: number, a: any) => s + a.incorrectas, 0),
-          totalAnswered:   r.areas.reduce((s: number, a: any) => s + a.total, 0),
-          areas:           r.areas,
-        };
-      }
+        // Convertir lista → mapa { idEstudiante: result } igual que Saber
+        const resultados: Record<string, any> = {};
+        for (const r of resultado.resultados) {
+            resultados[r.idEstudiante] = {
+                position: r.position,
+                score: r.puntajeGlobal,
+                totalStudents: resultado.resultados.length,
+                correctAnswers: r.areas.reduce((s: number, a: any) => s + a.correctas, 0),
+                incorrectAnswers: r.areas.reduce((s: number, a: any) => s + a.incorrectas, 0),
+                totalAnswered: r.areas.reduce((s: number, a: any) => s + a.total, 0),
+                areas: r.areas,
+            };
+        }
 
-      return res.status(200).json({ ok: true, resultados });
+        return res.status(200).json({ ok: true, resultados });
     } catch (err: unknown) {
         const mensaje = err instanceof Error ? err.message : "Error desconocido";
         return res.status(500).json({ ok: false, error: mensaje });
