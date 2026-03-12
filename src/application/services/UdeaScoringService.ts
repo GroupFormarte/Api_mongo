@@ -221,7 +221,7 @@ export class UdeaScoringService {
     // 5. Calcular posición (ranking por puntajeGlobal desc)
     resultados.sort((a, b) => b.puntajeGlobal - a.puntajeGlobal);
     resultados.forEach((r, i) => {
-      r.position = r.puntajeGlobal > 0 ? i + 1 : 0;
+      r.position = i + 1 ;
     });
 
     // Agregar nombres desde students (nombrePorId ya existe arriba)
