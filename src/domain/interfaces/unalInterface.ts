@@ -2,7 +2,8 @@ export type AreaUnal = 'matematicas' | 'ciencias' | 'sociales' | 'lectura' | 'in
 
 export interface PuntajeAreaUnal {
   area: AreaUnal;
-  puntaje: number;      // 0–15 (escala UNAL por área)
+  puntaje: number;
+  scoreBruto: number;
   correctas: number;
   incorrectas: number;
   total: number;
@@ -10,7 +11,7 @@ export interface PuntajeAreaUnal {
 
 export interface ResultadoUnal {
   idEstudiante: string;
-  score: number;           // 0–1000
+  score: number;
   position: number;
   totalStudents: number;
   correctAnswers: number;

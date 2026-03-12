@@ -30,6 +30,59 @@ export async function calcularBatchSaber11(req: Request, res: Response) {
     }
 }
 
+export async function guardarRespuestasSaber11(req: Request, res: Response) {
+    const { idInstituto, idSimulacro, estudiantes } = req.body;
+
+    if (!idInstituto || !Array.isArray(estudiantes) || estudiantes.length === 0) {
+        return res.status(400).json({ ok: false, error: 'Se requieren: idInstituto, estudiantes[]' });
+    }
+
+    try {
+        const db = getDb();
+        const bulkOps: any[] = [];
+        const ahora = new Date().toISOString();
+
+        for (const est of estudiantes) {
+            if (!Array.isArray(est.answers)) continue;
+            for (const ans of est.answers) {
+                if (!ans.idPregunta) continue;
+                bulkOps.push({
+                    updateOne: {
+                        filter: {
+                            idPregunta: ans.idPregunta,
+                            idEstudiante: est.idEstudiante,
+                            ...(idSimulacro ? { idSimulacro } : {}),
+                        },
+                        update: {
+                            $set: {
+                                idPregunta: ans.idPregunta,
+                                idEstudiante: est.idEstudiante,
+                                idInstituto,
+                                idSimulacro: idSimulacro ?? null,
+                                asignatura: ans.asignatura ?? '',
+                                respuesta: ans.esCorrecta,
+                                dateCreated: ahora,
+                            },
+                        },
+                        upsert: true,
+                    },
+                });
+            }
+        }
+
+        if (bulkOps.length > 0) {
+            await db.collection('resultados_preguntas').bulkWrite(bulkOps, { ordered: false });
+        }
+
+        return res.status(200).json({ ok: true, guardadas: bulkOps.length });
+
+    } catch (err: unknown) {
+        const mensaje = err instanceof Error ? err.message : 'Error desconocido';
+        return res.status(500).json({ ok: false, error: mensaje });
+    }
+
+}
+
 export async function calcularBatchUnal(req: Request, res: Response) {
     const { idInstituto, idSimulacro, estudiantes } = req.body;
 
@@ -104,40 +157,40 @@ async function recalibrarContadores(db: mongoose.mongo.Db): Promise<number> {
     return bulkOps.length;
 }
 
-export async function calcularUdea (req: Request, res: Response) {
+export async function calcularUdea(req: Request, res: Response) {
     const { idSimulacro, students } = req.body;
 
-     // LOG TEMPORAL
+    // LOG TEMPORAL
     console.log('[UdeA] idSimulacro:', idSimulacro);
     console.log('[UdeA] students recibidos:', students?.length);
     console.log('[UdeA] primer student keys:', students?.[0] ? Object.keys(students[0]) : 'ninguno');
     console.log('[UdeA] examenes del primer student:', JSON.stringify(students?.[0]?.examenes_asignados?.[0] || students?.[0]?.assignedExams?.[0], null, 2));
 
     if (!idSimulacro || !Array.isArray(students) || students.length === 0) {
-      return res.status(400).json({
-        ok: false,
-        error: "Se requieren: idSimulacro (string) y students (array)",
-      });
+        return res.status(400).json({
+            ok: false,
+            error: "Se requieren: idSimulacro (string) y students (array)",
+        });
     }
 
     try {
-      const db = getDb();
-      const service = new UdeaScoringService(db);
-      const resultado = await service.calcularDesdeFlutter(students, idSimulacro);
+        const db = getDb();
+        const service = new UdeaScoringService(db);
+        const resultado = await service.calcularDesdeFlutter(students, idSimulacro);
 
-      return res.status(200).json({
-        ok: true,
-        data: {
-          idSimulacro,
-          totalEstudiantes: resultado.resultados.length,
-          presentados:      resultado.resultados.filter(r => r.areas.length > 0).length,
-          noPresentados:    resultado.resultados.filter(r => r.areas.length === 0).length,
-          fechaCalculo:     resultado.fechaCalculo,
-          resultados:       resultado.resultados,
-        },
-      });
+        return res.status(200).json({
+            ok: true,
+            data: {
+                idSimulacro,
+                totalEstudiantes: resultado.resultados.length,
+                presentados: resultado.resultados.filter(r => r.areas.length > 0).length,
+                noPresentados: resultado.resultados.filter(r => r.areas.length === 0).length,
+                fechaCalculo: resultado.fechaCalculo,
+                resultados: resultado.resultados,
+            },
+        });
     } catch (err: unknown) {
-      const mensaje = err instanceof Error ? err.message : "Error desconocido";
-      return res.status(500).json({ ok: false, error: mensaje });
+        const mensaje = err instanceof Error ? err.message : "Error desconocido";
+        return res.status(500).json({ ok: false, error: mensaje });
     }
-  }
+}

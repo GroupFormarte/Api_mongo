@@ -3,6 +3,7 @@ import {
   calcularBatchSaber11,
   calcularBatchUnal,
   calcularUdea,
+  guardarRespuestasSaber11,
   recalibrarScoring,
 } from '../controllers/scoring/scoringController';
 
@@ -24,7 +25,7 @@ const router = Router();
  *   ]
  * }
  */
-router.post( '/udea/calcular', calcularUdea);
+router.post('/udea/calcular', calcularUdea);
 
 /**
 * Calcula puntajes UNAL para un grupo. Mismo patrón que saber11/calcular-batch.
@@ -35,6 +36,12 @@ router.post( '/udea/calcular', calcularUdea);
 router.post('/unal/calcular-batch', calcularBatchUnal);
 
 router.post('/saber11/calcular-batch', calcularBatchSaber11);
+
+// Recibe respuestas individuales por pregunta y las guarda en resultados_preguntas.
+// Llamado en background desde Flutter — no bloquea la calificación.
+// Body: { idInstituto, idSimulacro, estudiantes: [{ idEstudiante, answers[] }] }
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/saber11/guardar-respuestas', guardarRespuestasSaber11);
 
 /**
  * Recalcula difficulty y weight en contadores_preguntas

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { DynamicRepository } from '../../../../infrastructure/repositories/DynamicRepository';
 import { asyncHandler } from '../../../../shared/middleware/errorHandler';
 import ApiResponse from '../../../../shared/utils/ApiResponse';
+import mongoose from 'mongoose';
 
 const router = Router();
 const repository = new DynamicRepository();
@@ -100,6 +101,101 @@ router.post('/:collectionName/:id?', asyncHandler(async (req: Request, res: Resp
   const document = await repository.create(collectionName, documentData, schemaDefinition);
   return ApiResponse.created(res, document, 'Document created successfully');
 }));
+
+router.patch('/assigned_simulation/:id/simulacro/:simulacroId/resultados',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id, simulacroId } = req.params;
+    const { resultados, mergeByUserId } = req.body;
+
+    if (!Array.isArray(resultados)) {
+      return ApiResponse.badRequest(res, 'Se requiere resultados[] en el body');
+    }
+
+    const db = mongoose.connection.db;
+    if (!db) throw new Error('MongoDB no conectado');
+
+    let finalResultados = resultados;
+
+    if (mergeByUserId) {
+      const doc = await db.collection('assigned_simulation').findOne(
+        { _id: new mongoose.Types.ObjectId(id) }
+      );
+
+      if (doc) {
+        const simulacro = (doc.simulacros_asignados as any[])
+          .find((s: any) => s.id_simulacro === simulacroId);
+
+        if (simulacro) {
+          const uploadedIds = new Set(resultados.map((r: any) => r.userId?.toString().trim()));
+          const uploadedDocs = new Set(
+            resultados
+              .map((r: any) => r.document_user?.toString().trim())
+              .filter(Boolean)
+          );
+
+          const otherResults = (simulacro.resultados_estudiantes ?? []).filter((existing: any) => {
+            const existingId = existing.userId?.toString().trim();
+            const existingDoc = existing.document_user?.toString().trim();
+            return !uploadedIds.has(existingId) &&
+              !(existingDoc && uploadedDocs.has(existingDoc));
+          });
+
+          finalResultados = [...otherResults, ...resultados];
+        }
+      }
+    }
+
+    const doc = await db.collection('assigned_simulation').findOne(
+      { _id: new mongoose.Types.ObjectId(id) }
+    );
+
+    if (!doc) return ApiResponse.notFound(res, 'Documento no encontrado');
+
+    const simulacros = doc.simulacros_asignados as any[];
+    const firstIndex = simulacros.findIndex((s: any) => s.id_simulacro === simulacroId);
+
+    if (firstIndex === -1) return ApiResponse.notFound(res, 'Simulacro no encontrado');
+
+    const updateKey = `simulacros_asignados.${firstIndex}.resultados_estudiantes`;
+
+    const result = await db.collection('assigned_simulation').updateOne(
+      { _id: new mongoose.Types.ObjectId(id) },
+      { $set: { [updateKey]: finalResultados } }
+    );
+
+    return ApiResponse.updated(res, { updated: result.modifiedCount }, 'Resultados actualizados');
+  })
+);
+
+router.patch('/assigned_simulation/:id/simulacro/:simulacroId/session-details',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id, simulacroId } = req.params;
+    const { sessionDetails } = req.body;
+
+    if (!sessionDetails) {
+      return ApiResponse.badRequest(res, 'Se requiere sessionDetails en el body');
+    }
+
+    const db = mongoose.connection.db;
+    if (!db) throw new Error('MongoDB no conectado');
+
+    const result = await db.collection('assigned_simulation').updateOne(
+      { _id: new mongoose.Types.ObjectId(id) },
+      {
+        $set: {
+          'simulacros_asignados.$[elem].sessionDetails': sessionDetails,
+        },
+      },
+      {
+        arrayFilters: [{ 'elem.id_simulacro': simulacroId }],
+      }
+    );
+
+    if (result.matchedCount === 0) return ApiResponse.notFound(res, 'Documento no encontrado');
+
+    return ApiResponse.updated(res, { updated: result.modifiedCount }, 'SessionDetails actualizado');
+  })
+);
 
 // Update document by ID (full replacement)
 router.put('/:collectionName/:id', asyncHandler(async (req: Request, res: Response) => {
