@@ -1,28 +1,7 @@
 import mongoose from 'mongoose';
 import { AreaUnal, ResultadoUnal, PuntajeAreaUnal } from '../../domain/interfaces/unalInterface';
+import { mapAsignaturaToAreaUnal } from './mappers/unalSubjectMapper';
 
-function mapAsignaturaToAreaUnal(asignatura: string): AreaUnal | null {
-  const a = asignatura
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
-  if (a.includes('matematica') || a.includes('razonamiento logico') ||
-    a.includes('razonamiento matematico')) return 'matematicas';
-
-  if (a.includes('ciencias naturales') || a.includes('biologia') ||
-    a.includes('fisica') || a.includes('quimica')) return 'ciencias';
-
-  if (a.includes('ciencias sociales') || a.includes('competencia ciudadana') ||
-    a.includes('sociales')) return 'sociales';
-
-  if (a.includes('lectura') || a.includes('competencia lectora') ||
-    a.includes('analisis textual') || a.includes('analisis de texto')) return 'lectura';
-
-  if (a.includes('ingles') || a.includes('english')) return 'ingles';
-
-  return null;
-}
 
 function calcularEstadisticas(valores: number[]): { media: number; sd: number } {
   if (valores.length === 0) return { media: 0, sd: 1 };
@@ -99,6 +78,7 @@ export class UnalScoringService {
       let incorrectasTotal = 0;
 
       for (const subject of est.subjects) {
+      
         const area = mapAsignaturaToAreaUnal(subject.name);
         if (!area) continue;
 

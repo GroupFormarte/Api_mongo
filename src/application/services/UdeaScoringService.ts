@@ -1,16 +1,6 @@
 import mongoose from "mongoose";
 import { AreaUdea, PuntajeAreaUdea, ResultadoGrupoUdea, ResultadoUdea, StudentFromFlutter } from "../../domain/interfaces/udeaInterfaces";
-
-
-function mapAreaUdea(nombre: string): AreaUdea | null {
-  const n = nombre
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-  if (n.includes("razonamiento")) return "razonamiento";
-  if (n.includes("lectora") || n.includes("lectura")) return "lectura";
-  return null;
-}
+import { mapAsignaturaToAreaUdea } from "./mappers/udeaSubjectMapper";
 
 /**
  * SD poblacional ÷N — el grupo ES la población completa.
@@ -84,7 +74,9 @@ export class UdeaScoringService {
       >();
 
       for (const subject of subjects) {
-        const areaKey = mapAreaUdea(subject.name ?? "");
+        const areaKey = mapAsignaturaToAreaUdea(subject.name ?? "");
+
+          console.log(`Procesando estudiante ${student.id_estudiante}, asignatura: ${subject.name}`);
         if (!areaKey) continue;
 
         const existing = areasMap.get(areaKey);

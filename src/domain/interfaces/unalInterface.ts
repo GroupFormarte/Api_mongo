@@ -1,4 +1,4 @@
-export type AreaUnal = 'matematicas' | 'ciencias' | 'sociales' | 'lectura' | 'ingles';
+export type AreaUnal = 'Matemáticas' | 'Ciencias Naturales' | 'Ciencias Sociales' | 'Análisis Textual' | 'Análisis de la Imagen';
 
 export interface PuntajeAreaUnal {
   area: AreaUnal;

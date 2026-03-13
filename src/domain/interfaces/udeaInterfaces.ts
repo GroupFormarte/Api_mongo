@@ -1,5 +1,5 @@
 // ─── Tipos ────────────────────────────────────────────────────────────────────
-export type AreaUdea = "razonamiento" | "lectura";
+export type AreaUdea = "Razonamiento Lógico" | "Competencia Lectora";
 
 // Estructura que Flutter manda (subjects ya calculados)
 export interface SubjectFromFlutter {
