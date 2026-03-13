@@ -151,8 +151,11 @@ async function calcularDiscriminacionParaTipo(
             is_calibrated: totalRespuestas >= config.minRespuestasCalibrar,
             total_answers: totalRespuestas,
             lastDiscriminacionCalculo: new Date(),
+            difficulty: parseFloat((1 - pctSuperior * 0.5 - pctInferior * 0.5).toFixed(4)),
+            weight: parseFloat((pctSuperior * 0.5 + pctInferior * 0.5).toFixed(4)),
           },
         },
+        upsert: true,
       },
     });
     actualizadas++;
