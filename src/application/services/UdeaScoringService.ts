@@ -1,5 +1,11 @@
 import mongoose from "mongoose";
-import { AreaUdea, PuntajeAreaUdea, ResultadoGrupoUdea, ResultadoUdea, StudentFromFlutter } from "../../domain/interfaces/udeaInterfaces";
+import {
+  AreaUdea,
+  PuntajeAreaUdea,
+  ResultadoGrupoUdea,
+  ResultadoUdea,
+  StudentFromFlutter,
+} from "../../domain/interfaces/udeaInterfaces";
 import { mapAsignaturaToAreaUdea } from "./mappers/udeaSubjectMapper";
 
 /**
@@ -48,7 +54,10 @@ export class UdeaScoringService {
    * 5. Calcular posición (ranking)
    * 6. Guardar en colección Estudiantes
    */
-  async calcularGrupo ( students: StudentFromFlutter[], idSimulacro: string): Promise<ResultadoGrupoUdea> {
+  async calcularGrupo(
+    students: StudentFromFlutter[],
+    idSimulacro: string,
+  ): Promise<ResultadoGrupoUdea> {
     // 1. Extraer aciertos por área de cada estudiante
     // Map: idEstudiante → Map<areaKey, { nombre, correctas, total }>
     const porEstudiante = new Map<
@@ -76,14 +85,17 @@ export class UdeaScoringService {
       for (const subject of subjects) {
         const areaKey = mapAsignaturaToAreaUdea(subject.name ?? "");
 
-          console.log(`Procesando estudiante ${student.id_estudiante}, asignatura: ${subject.name}`);
+        console.log(
+          `Procesando estudiante ${student.id_estudiante}, asignatura: ${subject.name}`,
+        );
         if (!areaKey) continue;
 
         const existing = areasMap.get(areaKey);
         if (existing) {
           // Si hay dos subjects del mismo área, acumular
           existing.correctas += subject.correctAnswers ?? 0;
-          existing.total += (subject.correctAnswers ?? 0) + (subject.incorrectAnswers ?? 0);
+          existing.total +=
+            (subject.correctAnswers ?? 0) + (subject.incorrectAnswers ?? 0);
         } else {
           areasMap.set(areaKey, {
             nombre: subject.name ?? "",
@@ -200,10 +212,22 @@ export class UdeaScoringService {
     }
 
     // No presentados → puntaje 0
+    const areasVacias: PuntajeAreaUdea[] = (
+      ["Razonamiento Lógico", "Competencia Lectora"] as AreaUdea[]
+    ).map((area) => ({
+      area,
+      puntaje: 0,
+      correctas: 0,
+      incorrectas: 0,
+      total: 0,
+      media: 0,
+      sd: 0,
+    }));
+
     for (const idEstudiante of noPresentados) {
       resultados.push({
         idEstudiante,
-        areas: [],
+        areas: areasVacias,
         puntajeGlobal: 0,
         position: 0,
         fechaCalculo,
@@ -213,7 +237,7 @@ export class UdeaScoringService {
     // 5. Calcular posición (ranking por puntajeGlobal desc)
     resultados.sort((a, b) => b.puntajeGlobal - a.puntajeGlobal);
     resultados.forEach((r, i) => {
-      r.position = i + 1 ;
+      r.position = i + 1;
     });
 
     // Agregar nombres desde students (nombrePorId ya existe arriba)
