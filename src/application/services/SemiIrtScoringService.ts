@@ -1,27 +1,8 @@
 import mongoose from 'mongoose';
 import { AreaSaber11, ContadorPregunta, PuntajeArea, ResultadoPregunta, ResultadoSemiIRT } from '../../domain/interfaces/saberInterfaces';
+import { mapAsignaturaToAreaIcfes } from './mappers/icfesSubjectMapper';
 
-function mapAsignaturaToArea(asignatura: string): AreaSaber11 | null {
-  const a = asignatura
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
 
-  if (a.includes('lectura') || a.includes('competencia lectora') ||
-    a.includes('analisis textual')) return 'lectura';
-
-  if (a.includes('matematica') || a.includes('razonamiento logico')) return 'matematicas';
-
-  if (a.includes('ciencias naturales') || a.includes('biologia') ||
-    a.includes('fisica') || a.includes('quimica')) return 'ciencias';
-
-  if (a.includes('ciencias sociales') || a.includes('competencia ciudadana'))
-    return 'sociales';
-
-  if (a.includes('ingles') || a.includes('english')) return 'ingles';
-
-  return null;
-}
 
 // ─── Peso Semi-IRT ───
 /**
@@ -50,11 +31,11 @@ function calcularPeso(contador: ContadorPregunta | undefined): number {
 }
 
 function calcularPuntajeSaber11(areas: Map<AreaSaber11, number>): number {
-  const lc = areas.get('lectura') ?? 0;
-  const ma = areas.get('matematicas') ?? 0;
-  const cn = areas.get('ciencias') ?? 0;
-  const cs = areas.get('sociales') ?? 0;
-  const ing = areas.get('ingles') ?? 0;
+  const lc = areas.get('Lectura Crítica') ?? 0;
+  const ma = areas.get('Matemáticas') ?? 0;
+  const cn = areas.get('Ciencias Naturales') ?? 0;
+  const cs = areas.get('Sociales y Ciudadanas') ?? 0;
+  const ing = areas.get('Inglés') ?? 0;
 
   const ig = (3 * lc + 3 * ma + 3 * cn + 3 * cs + ing) / 13;
   return parseFloat(Math.min(500, Math.max(0, ig * 5)).toFixed(1));
@@ -69,7 +50,7 @@ function calcularIRTDesdeRespuestas(
   const areaStats = new Map<AreaSaber11, { correctas: number; incorrectas: number }>();
 
   for (const resp of respuestas) {
-    const area = mapAsignaturaToArea(resp.asignatura);
+    const area = mapAsignaturaToAreaIcfes(resp.asignatura);
     if (!area) continue;
 
     const peso = calcularPeso(contadorMap.get(resp.idPregunta));
@@ -127,7 +108,7 @@ export class SemiIrtScoringService {
     let totalIncorrectas = 0;
 
     for (const subject of subjects) {
-      const area = mapAsignaturaToArea(subject.name);
+      const area = mapAsignaturaToAreaIcfes(subject.name);
       if (!area) continue;
       const correctas = subject.correctAnswers ?? 0;
       const incorrectas = subject.incorrectAnswers ?? 0;
@@ -230,19 +211,21 @@ export class SemiIrtScoringService {
         const areasDetalle: PuntajeArea[] = [];
         let correctas = 0, incorrectas = 0;
 
-        for (const subject of est.subjects) {
-          const area = mapAsignaturaToArea(subject.name);
-          if (!area) continue;
-          const c = subject.correctAnswers ?? 0;
-          const i = subject.incorrectAnswers ?? 0;
-          const total = c + i;
-          if (total === 0) continue;
-          const puntajeBase = parseFloat(((c / total) * 100).toFixed(1));
-          areaNormalizada.set(area, puntajeBase);
-          areasDetalle.push({ area, puntaje: puntajeBase, correctas: c, incorrectas: i, total });
-          correctas += c;
-          incorrectas += i;
-        }
+      for (const subject of est.subjects) {
+        const area = mapAsignaturaToAreaIcfes(subject.name);
+        if (!area) continue;
+
+        const c = subject.correctAnswers ?? 0;
+        const i = subject.incorrectAnswers ?? 0;
+        const total = c + i;
+        if (total === 0) continue;
+
+        const puntajeBase = parseFloat(((c / total) * 100).toFixed(1));
+        areaNormalizada.set(area, puntajeBase);
+        areasDetalle.push({ area, puntaje: puntajeBase, correctas: c, incorrectas: i, total });
+        correctas += c;
+        incorrectas += i;
+      }
 
         puntajes.push({
           idEstudiante: est.idEstudiante,

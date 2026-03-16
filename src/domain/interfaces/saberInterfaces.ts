@@ -1,4 +1,4 @@
-export type AreaSaber11 = 'lectura' | 'matematicas' | 'ciencias' | 'sociales' | 'ingles';
+export type AreaSaber11 = 'Lectura Crítica' | 'Matemáticas' | 'Ciencias Naturales' | 'Sociales y Ciudadanas' | 'Inglés';
 
 export interface ResultadoPregunta {
   idPregunta: string;
