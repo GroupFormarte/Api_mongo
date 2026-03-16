@@ -3,6 +3,7 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import path from 'path';
+import { env } from '../shared/config/env';
 
 // Database connection
 import DatabaseConnection from '../infrastructure/database/connection';
@@ -30,7 +31,7 @@ import { errorHandler, notFoundHandler } from '../shared/middleware/errorHandler
 import { authenticate } from '../shared/middleware/authMiddleware';
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = env.port;
 
 // Initialize database connection
 const dbConnection = DatabaseConnection.getInstance();

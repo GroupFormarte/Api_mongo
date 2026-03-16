@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { env } from '../../shared/config/env';
 
 class DatabaseConnection {
   private static instance: DatabaseConnection;
@@ -19,7 +20,7 @@ class DatabaseConnection {
     }
 
     try {
-      const mongoDB = process.env.MONGO_URI || '';
+      const mongoDB = env.mongoUri || '';
       if (!mongoDB) {
         throw new Error('MONGO_URI environment variable is not defined');
       }

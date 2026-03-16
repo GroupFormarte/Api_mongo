@@ -18,4 +18,6 @@
 // 
 // ================================================
 
-export { default } from './crud_legacy';
+import { Router } from 'express';
+// Legacy CRUD routes have been migrated to modular routes under academic/, students/, system/
+export default Router();

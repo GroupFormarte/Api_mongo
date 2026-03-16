@@ -59,7 +59,8 @@ export class ApiResponse {
         timestamp: new Date().toISOString(),
         version: this.API_VERSION,
         ...(details && { details })
-      }
+      },
+      message: error
     };
 
     return res.status(statusCode).json(response);

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
+import { env } from '../../shared/config/env';
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/dev_mongo';
+const MONGO_URI = env.mongoUri;
 
 const CONFIG_EXAMEN = {
   saber11: {

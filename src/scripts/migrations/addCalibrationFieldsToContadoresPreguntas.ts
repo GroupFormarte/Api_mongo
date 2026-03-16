@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { env } from '../../shared/config/env';
 
 type CounterDoc = {
   _id: mongoose.Types.ObjectId;
@@ -24,7 +25,7 @@ function normalizeExamType(value: unknown): string | null {
 }
 
 async function run(): Promise<void> {
-  const mongoUri = process.env.MONGO_URI;
+  const mongoUri = env.mongoUri;
 
   if (!mongoUri) {
     throw new Error('MONGO_URI environment variable is not defined');

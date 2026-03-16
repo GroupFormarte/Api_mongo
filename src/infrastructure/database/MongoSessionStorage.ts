@@ -8,7 +8,7 @@ const sessionSchema = new Schema<SessionMetadata>({
   ipAddress: { type: String, required: true },
   userAgent: { type: String, required: true },
   createdAt: { type: Date, required: true, default: Date.now },
-  expiresAt: { type: Date, required: true, index: true },
+  expiresAt: { type: Date, required: true },
   isActive: { type: Boolean, required: true, default: true, index: true },
 });
 

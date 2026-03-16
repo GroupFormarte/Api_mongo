@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { env } from '../config/env';
 
 interface LogEntry {
   timestamp: string;
@@ -67,7 +68,7 @@ class Logger {
     const fileInfo = entry.file ? ` (${entry.file}:${entry.line})` : '';
     
     console.log(`${color}[${entry.timestamp}] ${entry.level}${reset}: ${entry.message}${fileInfo}`);
-    if (entry.stack && process.env.NODE_ENV === 'development') {
+    if (entry.stack && env.nodeEnv === 'development') {
       console.log(entry.stack);
     }
   }

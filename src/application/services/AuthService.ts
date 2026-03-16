@@ -1,5 +1,6 @@
 import jwt, { SignOptions, JwtPayload } from 'jsonwebtoken';
 import axios from 'axios';
+import { env } from '../../shared/config/env';
 
 export interface PodiumUser {
   id: string;
