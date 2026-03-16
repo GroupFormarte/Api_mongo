@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { AreaSaber11, ContadorPregunta, PuntajeArea, ResultadoSemiIRT } from '../../domain/interfaces/saberInterfaces';
+import { AreaSaber11, ContadorPregunta, PuntajeArea, ResultadoSemiIRT } from '../../domain/interfaces/saber.interfaces';
 import { mapAsignaturaToAreaIcfes } from '../mappers/icfesSubjectMapper';
 
 // ─── Peso Semi-IRT ───

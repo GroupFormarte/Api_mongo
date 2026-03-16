@@ -2,17 +2,13 @@ import { UserEntity, UserMetadata } from '../../domain/entities/UserEntity';
 import { SessionEntity } from '../../domain/entities/SessionEntity';
 import { SessionStoragePort } from '../ports/SessionStoragePort';
 import { authService } from './AuthService';
+import { LoginContext } from '../../domain/interfaces/user.interface';
 
 export interface UserStoragePort {
   saveUser(metadata: UserMetadata): Promise<UserMetadata>;
   findUserByEmail(email: string): Promise<UserMetadata | null>;
   findUserByNumberId(numberId: string): Promise<UserMetadata | null>;
   validateUserCredentials(email: string, password: string): Promise<UserMetadata | null>;
-}
-
-export interface LoginContext {
-  ipAddress: string;
-  userAgent: string;
 }
 
 export class UserService {
@@ -22,24 +18,17 @@ export class UserService {
   ) {}
 
   async registerUser(userData: Omit<UserMetadata, 'createdAt'>): Promise<UserEntity> {
-    // Create and validate user entity
     const userEntity = UserEntity.create(userData);
-    if (!userEntity.validate()) {
-      throw new Error('Invalid user data');
-    }
+    if (!userEntity.validate()) throw new Error('Invalid user data');
 
-    // Check if user already exists
     const existingUserByEmail = await this.userStorage.findUserByEmail(userData.email);
-    if (existingUserByEmail) {
-      throw new Error('Email already registered');
-    }
-
+    if (existingUserByEmail) throw new Error('Email already registered');
+    
     const existingUserByNumberId = await this.userStorage.findUserByNumberId(userData.number_id);
     if (existingUserByNumberId) {
       throw new Error('ID number already registered');
     }
 
-    // Save user
     const savedMetadata = await this.userStorage.saveUser(userEntity.getMetadata());
     return new UserEntity(savedMetadata);
   }

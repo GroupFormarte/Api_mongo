@@ -1,4 +1,4 @@
-import { AreaUnal } from "../../domain/interfaces/unalInterface";
+import { AreaUnal } from "../../domain/interfaces/unal-interfaces";
 
 export function mapAsignaturaToAreaUnal(asignatura: string): AreaUnal | null {
   const a = asignatura

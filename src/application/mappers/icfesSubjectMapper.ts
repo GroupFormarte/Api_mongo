@@ -1,4 +1,4 @@
-import { AreaSaber11 } from "../../domain/interfaces/saberInterfaces";
+import { AreaSaber11 } from "../../domain/interfaces/saber.interfaces";
 
 export function mapAsignaturaToAreaIcfes(asignatura: string): AreaSaber11 | null {
   const a = asignatura

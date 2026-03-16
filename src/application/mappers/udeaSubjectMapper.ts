@@ -1,4 +1,4 @@
-import { AreaUdea } from "../../domain/interfaces/udeaInterfaces";
+import { AreaUdea } from "../../domain/interfaces/udea.interfaces";
 
 export function mapAsignaturaToAreaUdea(nombre: string): AreaUdea | null {
   const n = nombre

@@ -5,9 +5,10 @@ export const env = {
   mongoUri: process.env.MONGO_URI!,
   jwtSecret: process.env.JWT_SECRET!,
   nodeEnv: process.env.NODE_ENV ?? 'development',
+  podiumApiUrl: process.env.PODIUM_API_URL!
 };
 
-if (!env.mongoUri || !env.jwtSecret) {
+if (!env.mongoUri || !env.jwtSecret || !env.podiumApiUrl) {
   console.error('FATAL: Missing required env vars');
   process.exit(1);
 }

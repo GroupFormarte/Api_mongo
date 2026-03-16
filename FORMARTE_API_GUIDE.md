@@ -1,387 +1,185 @@
-# 🚀 FormarTE API - Unified Structure Guide
+# FormarTE API Guide (Flujo Actual)
 
-## 📋 Resumen Ejecutivo
+Este documento resume solo lo esencial del estado actual de la API.
 
-El proyecto FormarTE API ha sido **completamente reestructurado** eliminando el concepto de versiones (v1/v2) y consolidando toda la funcionalidad bajo una **estructura unificada y moderna**. 
+## 1. Convenciones Generales
 
-### **🎯 Logros Principales**
-- ✅ **Eliminación completa** del monolítico `crud.ts` (594 líneas → estructura modular)
-- ✅ **Unificación** de todas las rutas bajo `/api/*` 
-- ✅ **Dynamic Model Factory** con cache inteligente
-- ✅ **Respuestas estandarizadas** en toda la API
-- ✅ **Mejoras de performance** del 400%+ en operaciones repetitivas
-- ✅ **Retrocompatibilidad** total mantenida
+- Base URL local: `http://localhost:3000`
+- Formato auth: `Authorization: Bearer <token>`
+- Contenido JSON: `Content-Type: application/json`
+- Respuestas: utilidades de `ApiResponse` en la mayoria de modulos
 
-## 🏗️ Nueva Arquitectura Unificada
+## 2. Seguridad y Sesion
 
-### **Estructura de Directorios**
-```
-src/
-├── infrastructure/
-│   ├── factories/
-│   │   └── DynamicModelFactory.ts       # Cache inteligente de modelos
-│   ├── repositories/
-│   │   └── DynamicRepository.ts         # Acceso unificado a datos
-│   └── database/
-│       └── connection.ts                # Conexión singleton
-├── application/services/
-│   ├── AcademicService.ts               # Lógica académica
-│   └── StudentService.ts                # Lógica de estudiantes
-├── interfaces/http/routes/
-│   ├── academic/academicRoutes.ts       # Operaciones académicas
-│   ├── students/studentRoutes.ts        # Gestión de estudiantes
-│   ├── system/systemRoutes.ts           # Utilidades del sistema
-│   └── media/mediaRoutes.ts             # Gestión de archivos
-├── shared/
-│   ├── middleware/errorHandler.ts       # Manejo de errores
-│   └── utils/ApiResponse.ts             # Respuestas estandarizadas
-└── main/server.ts                       # Servidor principal
-```
+Publico (sin `authenticate`):
 
-## 🌐 API Endpoints Unificados
+- `/api/auth/*`
+- `/api/version/*`
+- `/api/scoring/*`
 
-### **📋 Core API Routes**
+Protegido (con `authenticate`):
 
-#### 🔐 Authentication (`/api/auth/`)
-```
-POST   /login                    # Login de usuario
-POST   /register                 # Registro de usuario  
-GET    /profile                  # Perfil de usuario
-PUT    /profile                  # Actualizar perfil
-DELETE /logout                   # Cerrar sesión
-```
+- `/api/academic/*`
+- `/api/students/*`
+- `/api/system/*`
+- `/api/media/*`
+- `/api/pdf/*`
+- `/api/qualifier/*`
+- `/api/time/*`
+- `/progress-app/*`
 
-#### 🎓 Academic Operations (`/api/academic/`)
-```
-POST   /areas/bulk              # Obtener áreas por IDs
-POST   /subjects/bulk           # Obtener asignaturas por IDs
-GET    /subjects/:id/:grado     # Asignatura específica
-GET    /simulacro/:value/:cantidad # Generar simulacro
-GET    /questions/:id           # Pregunta por ID
-GET    /questions-by-type/:programa/:type/:value
-GET    /academic-level/:collection/:id/:score
-```
+Legacy:
 
-#### 👥 Student Management (`/api/students/`)
-```
-GET    /position/:grado/:id     # Posición en ranking
-PUT    /:collection/bulk-update # Actualización masiva
-POST   /:collection/bulk-create-unique
-GET    /:collection/:id         # Estudiante por ID
-GET    /:collection/by-student-id/:id
-PUT    /:collection/:id         # Actualizar estudiante
-DELETE /:collection/:id         # Eliminar estudiante
-GET    /:collection             # Listar estudiantes (paginado)
-POST   /:collection/:id?        # Crear estudiante
-```
+- `/simulacro/*`
 
-#### ⚙️ System Utilities (`/api/system/`)
-```
-# CRUD Genérico
-POST   /:collection/bulk        # Documentos por IDs
-GET    /:collection/search/:field/:value
-GET    /:collection/multi-search/:query
-GET    /:collection/category/:category
-GET    /:collection             # Listar todos (paginado)
-GET    /:collection/:id         # Obtener por ID
-POST   /:collection/:id?        # Crear documento
-PUT    /:collection/:id         # Actualizar documento
-DELETE /:collection/:id         # Eliminar documento
+## 3. Endpoints por Modulo
 
-# Utilidades del Sistema
-GET    /system/cache/stats      # Estadísticas de cache
-GET    /system/collections/:name/stats # Estadísticas de colección
-DELETE /system/cache/:collection? # Limpiar cache
-POST   /system/cache/preload    # Precargar modelos
-```
+### 3.1 Auth (`/api/auth`)
 
-#### 📁 Media Management (`/api/media/`)
-```
-# Imágenes
-POST   /images/upload           # Subir imagen
-POST   /images/upload-multiple  # Subir múltiples
-GET    /images/proxy            # Proxy/redimensionar
-GET    /images/:id/metadata     # Metadatos de imagen
-DELETE /images/:id              # Eliminar imagen
+- `POST /register`
+- `POST /login`
+- `POST /podium-login`
+- `POST /refresh-token`
+- `POST /logout`
+- `POST /logout-all` (requiere auth)
 
-# Archivos genéricos
-POST   /files/upload            # Subir archivo
-GET    /files/download/:id      # Descargar archivo
+### 3.2 Version (`/api/version`)
 
-# Estadísticas
-GET    /stats                   # Estadísticas de media
-POST   /cleanup                 # Limpiar archivos no usados
-```
+- `GET /`
+- `POST /`
+- `PUT /`
 
-### **📋 Specific API Routes**
+### 3.3 Scoring (`/api/scoring`)
 
-#### 📄 PDF Operations (`/api/pdf/`)
-```
-POST   /generate                # Generar PDF
-GET    /download/:id            # Descargar PDF
-DELETE /:id                     # Eliminar PDF
-```
+- `POST /udea/calcular`
+- `POST /unal/calcular-batch`
+- `POST /saber11/calcular-batch`
+- `POST /saber11/guardar-respuestas`
+- `POST /recalibrar`
 
-#### 🏆 Qualifier Operations (`/api/qualifier/`)
-```
-GET    /list                    # Listar calificadores
-POST   /create                  # Crear calificador
-PUT    /:id                     # Actualizar calificador
-DELETE /:id                     # Eliminar calificador
-```
+### 3.4 Academic (`/api/academic`)
 
-#### 🕐 Time Zone Operations (`/api/time/`)
-```
-GET    /current                 # Zona horaria actual
-POST   /set                     # Establecer zona horaria
-GET    /list                    # Listar zonas disponibles
-```
+- `POST /areas/bulk`
+- `POST /get-areas/bulk` (compatibilidad)
+- `POST /subjects/bulk`
+- `GET /subjects/:idAsignature/:valueGrado`
+- `GET /simulacro/:value/:cantidad`
+- `GET /generate-simulacro/:value/:cantidad` (alias)
+- `GET /questions/:idquestion/:idProgram?`
+- `GET /questions-by-type/:idPrograma/:type/:value`
+- `GET /preguntas-por-tipo/:idPrograma/:type/:value` (compatibilidad)
+- `GET /academic-level/:collectionName/:id/:score`
 
-### **📱 Legacy Routes (Compatibility)**
-```
-GET/POST /simulacro/*           # Mobile CRUD operations
-GET/POST /progress-app/*        # Progress tracking
-```
+### 3.5 Students (`/api/students`)
 
-## 🔥 Nuevas Características
+- `GET /` (lista o por query `id_estudiante`)
+- `GET /position/:grado/:id_student`
+- `GET /get-my-position/:grado/:id_student` (compatibilidad)
+- `PUT /bulk-update`
+- `POST /bulk-create-unique`
+- `POST /remove-examen`
+- `GET /:collectionName/convert_id/:id`
+- `GET /:collectionName/by-student-id/:id`
+- `GET /:collectionName/:id`
+- `GET /:collectionName`
+- `POST /:collectionName/:id?`
+- `PUT /:id`
+- `PUT /:collectionName/:id`
+- `DELETE /:collectionName/:id`
+- `GET /search/:field/:value`
 
-### **1. Dynamic Model Factory con Cache**
-```typescript
-// Uso automático de cache
-const model = DynamicModelFactory.getInstance()
-  .getModel('Estudiantes', schema, {
-    cache: true,           // Cache habilitado
-    indexes: ['id_student'], // Índices automáticos
-    validate: true         // Validación de esquema
-  });
+### 3.6 System (`/api/system`)
 
-// Estadísticas de cache
-GET /api/system/cache/stats
-{
-  "success": true,
-  "data": {
-    "hits": 1250,
-    "misses": 45,
-    "size": 8,
-    "collections": ["Estudiantes", "Areas", "Asignaturas"]
-  }
-}
-```
+CRUD dinamico:
 
-### **2. Respuestas API Estandarizadas**
-```typescript
-// Respuesta exitosa
-{
-  "success": true,
-  "data": {...},
-  "message": "Operation completed successfully",
-  "meta": {
-    "timestamp": "2024-01-20T10:30:00Z",
-    "version": "1.0.0",
-    "pagination": { ... },      // Si aplica
-    "performance": { ... }      // Si aplica
-  }
-}
+- `POST /:collectionName/bulk`
+- `GET /:collectionName/search/:field/:value`
+- `GET /:collectionName/multi-search/:query`
+- `GET /:collectionName/category/:category`
+- `GET /:collectionName`
+- `GET /:collectionName/:id`
+- `POST /:collectionName/:id?`
+- `PUT /:collectionName/:id`
+- `PATCH /:collectionName/:id`
+- `DELETE /:collectionName/:id`
 
-// Respuesta de error
-{
-  "success": false,
-  "error": "Resource not found",
-  "meta": {
-    "timestamp": "2024-01-20T10:30:00Z",
-    "version": "1.0.0",
-    "details": { ... }          // Detalles adicionales
-  }
-}
+Assigned simulation:
 
-// Respuesta bulk
-{
-  "success": true,
-  "data": {
-    "successful": [...],
-    "failed": [...],
-    "summary": {
-      "total": 100,
-      "successful": 95,
-      "failed": 5,
-      "successRate": "95.00%"
-    }
-  }
-}
-```
+- `PATCH /assigned_simulation/:id/simulacro/:simulacroId/resultados`
+- `PATCH /assigned_simulation/:id/simulacro/:simulacroId/session-details`
+- `PATCH /assigned_simulation/:documentId/simulacro/:simulacroId/student/:userId`
 
-### **3. Paginación Automática**
-```typescript
-// Request
-GET /api/students/Estudiantes?page=2&limit=25
+Cache/modelos:
 
-// Response
-{
-  "success": true,
-  "data": [...],
-  "meta": {
-    "pagination": {
-      "page": 2,
-      "limit": 25,
-      "total": 1000,
-      "totalPages": 40
-    }
-  }
-}
-```
+- `GET /system/cache/stats`
+- `GET /system/collections/:collectionName/stats`
+- `DELETE /system/cache/:collectionName?`
+- `POST /system/cache/preload`
 
-### **4. Performance Monitoring**
-```typescript
-// Response con métricas
-{
-  "success": true,
-  "data": {...},
-  "meta": {
-    "performance": {
-      "executionTime": 45,    // ms
-      "cacheHit": true
-    }
-  }
-}
-```
+### 3.7 Media (`/api/media`)
 
-## 🚀 Mejoras de Performance
+- `POST /images/upload`
+- `POST /images/upload-multiple`
+- `GET /images/proxy` (placeholder 501)
+- `GET /images/:id/metadata`
+- `DELETE /images/:id`
+- `POST /files/upload` (placeholder)
+- `GET /files/download/:id` (placeholder)
+- `GET /stats` (placeholder)
+- `POST /cleanup` (placeholder)
 
-### **Antes vs Después**
+### 3.8 PDF (`/api/pdf`)
 
-| Métrica | Antes | Después | Mejora |
-|---------|--------|---------|--------|
-| **Tiempo de respuesta promedio** | 350ms | 85ms | **75% más rápido** |
-| **Cache hit ratio** | 0% | 94% | **94% menos consultas BD** |
-| **Memoria utilizada** | 145MB | 98MB | **32% menos memoria** |
-| **Complejidad de código** | 594 líneas | <100 líneas/archivo | **90% más mantenible** |
-| **Errores no manejados** | ~15% | <1% | **99% más confiable** |
+- `POST /generate`
+- `GET /preview` (render de template de reporte)
 
-## 🔄 Guía de Migración
+### 3.9 Qualifier (`/api/qualifier`)
 
-### **⚠️ Breaking Changes**
-```javascript
-// ❌ ELIMINADO COMPLETAMENTE
-GET /api/generate-simulacro/...     → GET /api/academic/simulacro/...
-GET /api/get-areas/bulk             → POST /api/academic/areas/bulk
-GET /api/get-asignatures/bulk       → POST /api/academic/subjects/bulk
+- `POST /upload` (multipart, field `file`)
+- `POST /excel` (multipart, field `file`)
 
-// 🔄 RUTAS REORGANIZADAS
-GET /users/profile                  → GET /api/auth/profile
-POST /images/upload                 → POST /api/media/images/upload
-GET /qualifier/list                 → GET /api/qualifier/list
-```
+### 3.10 Time (`/api/time`)
 
-### **✅ Compatibilidad Mantenida**
-```javascript
-// ✅ Siguen funcionando
-GET /simulacro/*                    # Mobile operations
-GET /progress-app/*                 # Progress tracking
-POST /api/pdf/*                     # PDF operations (legacy)
-```
+- `GET /current-time`
+- `POST /time-left`
 
-## 🧪 Testing de la Nueva API
+### 3.11 Progress (`/progress-app`)
 
-### **1. Test de Academic Operations**
+- `GET /analisis/global/:idGrado/:idInstituto`
+- `GET /analisis/asignaturas/:idEstudiante/:idGrado/:idInstituto`
+- `GET /analisis/posiciones/:idGrado/:idInstituto`
+
+### 3.12 Legacy Simulacro (`/simulacro`)
+
+Modulo legacy con CRUD y operaciones historicas para compatibilidad movil.
+
+## 4. Ejemplos Minimos
+
+Login:
+
 ```bash
-# Generar simulacro
-curl http://localhost:3000/api/academic/simulacro/grado10/40
-
-# Obtener áreas por IDs
-curl -X POST http://localhost:3000/api/academic/areas/bulk \
+curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"grado": "10", "ids": ["id1", "id2"]}'
+  -d '{"email":"user@example.com","password":"123456"}'
 ```
 
-### **2. Test de Student Operations**
+Ruta protegida:
+
 ```bash
-# Posición de estudiante
-curl http://localhost:3000/api/students/position/grado10/estudiante123
-
-# Actualización masiva
-curl -X PUT http://localhost:3000/api/students/Estudiantes/bulk-update \
-  -H "Content-Type: application/json" \
-  -d '{"students": [{"id_estudiante": "123", "score": 85}]}'
+curl -X GET http://localhost:3000/api/system/system/cache/stats \
+  -H "Authorization: Bearer <token>"
 ```
 
-### **3. Test de System Utilities**
+Upload archivo (qualifier):
+
 ```bash
-# Estadísticas de cache
-curl http://localhost:3000/api/system/cache/stats
-
-# Búsqueda genérica
-curl http://localhost:3000/api/system/Estudiantes/search/grado/10
+curl -X POST http://localhost:3000/api/qualifier/upload \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@./archivo.xlsx"
 ```
 
-### **4. Test de Media Operations**
-```bash
-# Subir imagen
-curl -X POST http://localhost:3000/api/media/images/upload \
-  -F "image=@/path/to/image.jpg"
+## 5. Notas Operativas
 
-# Estadísticas de media
-curl http://localhost:3000/api/media/stats
-```
-
-## 🛡️ Características de Seguridad
-
-- **Validación automática** de parámetros de entrada
-- **Sanitización** de datos
-- **Rate limiting** preparado para implementar
-- **Error handling** sin exposición de datos sensibles
-- **CORS** configurado apropiadamente
-
-## 📊 Monitoreo y Observabilidad
-
-### **Health Checks**
-```bash
-GET /api/system/cache/stats          # Estado del cache
-GET /api/system/collections/:name/stats # Estado de colecciones
-```
-
-### **Performance Metrics**
-- Tiempo de ejecución de operaciones
-- Cache hit/miss ratios
-- Conteo de documentos por colección
-- Uso de memoria de modelos
-
-## 🎯 Próximos Pasos Recomendados
-
-### **Fase 1: Migración de Clientes**
-1. **Actualizar frontend** para usar nuevas rutas `/api/*`
-2. **Implementar manejo** de nuevas respuestas estandarizadas
-3. **Aprovechar paginación** automática
-
-### **Fase 2: Optimizaciones Avanzadas**
-1. **Implementar Redis** para cache distribuido
-2. **Agregar autenticación JWT** mejorada
-3. **Implementar rate limiting** por usuario
-
-### **Fase 3: Observabilidad Completa**
-1. **Logging estructurado** con Winston
-2. **Métricas con Prometheus**
-3. **Tracing distribuido**
-
-## 🆘 Troubleshooting
-
-### **Problemas Comunes**
-```bash
-# Cache no funciona
-DELETE /api/system/cache              # Limpiar cache
-POST /api/system/cache/preload        # Recargar modelos
-
-# Performance lenta
-GET /api/system/cache/stats           # Verificar hit ratio
-GET /api/system/collections/X/stats   # Verificar tamaño colección
-```
-
-## 📞 Soporte
-
-- **Documentación API**: Swagger UI (próximamente en `/api/docs`)
-- **Logs**: Consultar logs del servidor para errores específicos
-- **Cache Issues**: Usar endpoints de `/api/system/cache/`
-- **Performance**: Verificar métricas en respuestas de API
-
----
-
-**🎉 ¡FormarTE API ahora es más rápida, confiable y mantenible que nunca!**
+- Si falla el arranque por MongoDB, revisar `MONGO_URI` en `.env`.
+- Varios endpoints en `media` son placeholders y responden datos simulados o `501`.
+- Para cambios de rutas, actualizar primero `src/interfaces/http/index.ts` y luego esta guia.

@@ -5,12 +5,10 @@ import {
   ResultadoGrupoUdea,
   ResultadoUdea,
   StudentFromFlutter,
-} from "../../domain/interfaces/udeaInterfaces";
+} from "../../domain/interfaces/udea.interfaces";
 import { mapAsignaturaToAreaUdea } from "../mappers/udeaSubjectMapper";
 
-/**
- * SD poblacional ÷N — el grupo ES la población completa.
- */
+// SD poblacional ÷N — el grupo ES la población completa.
 function calcularEstadisticas(aciertos: number[]): {
   media: number;
   sd: number;

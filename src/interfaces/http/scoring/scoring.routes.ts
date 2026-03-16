@@ -5,7 +5,7 @@ import {
   calcularUdea,
   guardarRespuestasSaber11,
   recalibrarScoring,
-} from '../controllers/scoring/scoringController';
+} from './scoring.controller';
 
 const router = Router();
 

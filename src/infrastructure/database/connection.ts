@@ -27,7 +27,7 @@ class DatabaseConnection {
 
       await mongoose.connect(mongoDB);
       this.isConnected = true;
-      console.log('Connected to MongoDB');
+      console.log('\nConnected to MongoDB');
     } catch (error) {
       console.error('Error connecting to MongoDB:', error);
       throw error;

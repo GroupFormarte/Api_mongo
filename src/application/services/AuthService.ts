@@ -1,43 +1,12 @@
 import jwt, { SignOptions, JwtPayload } from 'jsonwebtoken';
 import axios from 'axios';
 import { env } from '../../shared/config/env';
-
-export interface PodiumUser {
-  id: string;
-  token: string;
-}
-
-export interface ValidatedUser {
-  userId: string;
-  isValid: boolean;
-  userData?: any;
-}
-
-export interface JWTPayload {
-  userId: string;
-  email?: string;
-  userData?: any;
-}
-
-export interface RefreshResponse {
-  success: boolean;
-  token?: string;
-  error?: string;
-}
+import { ValidatedUser, JWTPayload, RefreshResponse } from '../../domain/interfaces/auth.interfaces';
 
 export class AuthService {
-  private readonly podiumApiUrl = 'https://stage-api.plataformapodium.com/api/user/';
-  // private readonly podiumApiUrl = 'http://localhost:3200/api/user/';
-  private readonly jwtSecret: string;
+  private readonly podiumApiUrl = env.podiumApiUrl;
+  private readonly jwtSecret = env.jwtSecret ;
   private readonly jwtExpiresIn = '24h' as const;
-
-  constructor() {
-    this.jwtSecret = env.jwtSecret || 'fallback-secret-change-in-production';
-
-    if (!env.jwtSecret) {
-      console.warn('JWT_SECRET not set in environment variables. Using fallback secret.');
-    }
-  }
 
   /**
    * Validates user credentials against Podium API

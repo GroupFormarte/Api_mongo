@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
-import { AreaUnal, ResultadoUnal, PuntajeAreaUnal } from '../../domain/interfaces/unalInterface';
+import { AreaUnal, ResultadoUnal, PuntajeAreaUnal } from '../../domain/interfaces/unal-interfaces';
 import { mapAsignaturaToAreaUnal } from '../mappers/unalSubjectMapper';
-
 
 function calcularEstadisticas(valores: number[]): { media: number; sd: number } {
   if (valores.length === 0) return { media: 0, sd: 1 };

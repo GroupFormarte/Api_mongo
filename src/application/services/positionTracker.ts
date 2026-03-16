@@ -1,15 +1,6 @@
-// src/services/positionTracker.ts
-import mongoose from 'mongoose';
 import createDynamicModel from '../../infrastructure/database/dynamicModel';
 
 const INTERVALO = 5 * 60 * 1000; // cada 5 minutos
-
-type GradoData = {
-    grado: string;
-    scoreSimulacro?: number;
-    historyPosition?: { date: string; position: number }[];
-};
-
 const Estudiantes: any = createDynamicModel('Estudiantes', {});
 
 export async function startTrackingPositions(): Promise<void> {
