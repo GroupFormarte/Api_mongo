@@ -1,15 +1,13 @@
 import mongoose from 'mongoose';
-import { AreaSaber11, ContadorPregunta, PuntajeArea, ResultadoPregunta, ResultadoSemiIRT } from '../../domain/interfaces/saberInterfaces';
+import { AreaSaber11, ContadorPregunta, PuntajeArea, ResultadoSemiIRT } from '../../domain/interfaces/saberInterfaces';
 import { mapAsignaturaToAreaIcfes } from './mappers/icfesSubjectMapper';
-
-
 
 // ─── Peso Semi-IRT ───
 /**
  * Calcula el peso de una pregunta según sus datos históricos.
  * 
  * La ponderación se determina por el número total de respuestas y el nivel de dificultad:
- * - Si el contador no está definido o el total de respuestas es inferior a 100: devuelve 0,5. (sin datos suficientes)
+ * - Si el contador no está definido o el total de respuestas es inferior a 10: devuelve 0,5. (sin datos suficientes)
  * - Si el total de respuestas es inferior a 200: devuelve la media de (1 - dificultad) y 0,5.
  * - En caso contrario: devuelve (1 - dificultad) limitado entre 0,1 y 0,9.
  */

@@ -1,12 +1,5 @@
 export type AreaSaber11 = 'Lectura Crítica' | 'Matemáticas' | 'Ciencias Naturales' | 'Sociales y Ciudadanas' | 'Inglés';
 
-export interface ResultadoPregunta {
-  idPregunta: string;
-  asignatura: string;
-  respuesta: boolean;
-  dateCreated: string;
-}
-
 export interface ContadorPregunta {
   _id: string;
   difficulty: number;
