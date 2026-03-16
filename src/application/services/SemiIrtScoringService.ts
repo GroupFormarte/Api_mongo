@@ -110,73 +110,6 @@ export class SemiIrtScoringService {
     this.db = db;
   }
 
-  // ─── calcular (individual, desde resultados_preguntas) ────────────────────
-  async calcular(
-    idEstudiante: string,
-    idInstituto: string,
-    opciones: { soloUltimaSesion?: boolean } = { soloUltimaSesion: true }
-  ): Promise<ResultadoSemiIRT> {
-
-    const respuestas = await this.db
-      .collection<ResultadoPregunta>('resultados_preguntas')
-      .find({ idEstudiante, idInstituto })
-      .toArray();
-
-    if (respuestas.length === 0) {
-      throw new Error(`Sin respuestas para estudiante=${idEstudiante} instituto=${idInstituto}`);
-    }
-
-    const sesiones = new Map<string, ResultadoPregunta[]>();
-    for (const r of respuestas) {
-      const fecha = r.dateCreated?.substring(0, 10) ?? 'sin-fecha';
-      if (!sesiones.has(fecha)) sesiones.set(fecha, []);
-      sesiones.get(fecha)!.push(r);
-    }
-
-    let respuestasFiltradas: ResultadoPregunta[];
-    if (opciones.soloUltimaSesion) {
-      const fechaReciente = Array.from(sesiones.keys()).sort().at(-1)!;
-      respuestasFiltradas = sesiones.get(fechaReciente)!;
-    } else {
-      respuestasFiltradas = respuestas;
-    }
-
-    const idPreguntas = [...new Set(respuestasFiltradas.map(r => r.idPregunta))];
-    const objectIds = idPreguntas
-      .filter(id => mongoose.Types.ObjectId.isValid(id))
-      .map(id => new mongoose.Types.ObjectId(id));
-
-    const contadores = await this.db
-      .collection('contadores_preguntas')
-      .find({ _id: { $in: objectIds } })
-      .toArray();
-
-    const contadorMap = new Map<string, ContadorPregunta>();
-    for (const c of contadores) contadorMap.set(c._id.toString(), c as unknown as ContadorPregunta);
-
-    const { areaNormalizada, areasDetalle } = calcularIRTDesdeRespuestas(
-      respuestasFiltradas.map(r => ({
-        asignatura: r.asignatura,
-        respuesta: r.respuesta,
-        idPregunta: r.idPregunta,
-      })),
-      contadorMap,
-    );
-
-    const puntajeGlobal = calcularPuntajeSaber11(areaNormalizada);
-    console.log(`Puntaje global calculado para estudiante=${idEstudiante}:`, puntajeGlobal);
-
-    const resultado: ResultadoSemiIRT = {
-      idEstudiante, idInstituto, puntajeGlobal,
-      areas: areasDetalle,
-      fechaCalculo: new Date(),
-      sesionesDetectadas: sesiones.size,
-    };
-
-    await this.guardarEnEstudiante(resultado);
-    return resultado;
-  }
-
   // ─── calcularDesdeSubjects (individual, sin IRT) ──────────────────────────
   async calcularDesdeSubjects(
     idEstudiante: string,
@@ -343,6 +276,13 @@ export class SemiIrtScoringService {
         totalAnswered: p.correctAnswers + p.incorrectAnswers,
         areas: p.areas,
       };
+
+      for (const est of estudiantes.slice(0, 3)) {
+        const resps = respuestasPorEstudiante.get(est.idEstudiante) ?? [];
+        const pesosEst = resps.map(r => calcularPeso(contadorMap.get(r.idPregunta)));
+        const pesoPromedio = pesosEst.reduce((s, p) => s + p, 0) / pesosEst.length;
+        console.log(`[IRT] Est=${est.idEstudiante} | respuestas=${resps.length} | pesoPromedio=${pesoPromedio.toFixed(4)} | score=${resultados[est.idEstudiante]?.score}`);
+      }
 
       bulkStudents.push({
         updateOne: {
