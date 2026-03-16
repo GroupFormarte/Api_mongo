@@ -6,7 +6,7 @@ import {
   ResultadoUdea,
   StudentFromFlutter,
 } from "../../domain/interfaces/udeaInterfaces";
-import { mapAsignaturaToAreaUdea } from "./mappers/udeaSubjectMapper";
+import { mapAsignaturaToAreaUdea } from "../mappers/udeaSubjectMapper";
 
 /**
  * SD poblacional ÷N — el grupo ES la población completa.
