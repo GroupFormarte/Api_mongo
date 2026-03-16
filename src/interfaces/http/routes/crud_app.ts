@@ -1,13 +1,8 @@
 import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import createDynamicModel from '../../../infrastructure/database/dynamicModel';
-import dotenv from 'dotenv';
 import { removeLastS } from '../../../shared/utils/utils';
-
-// Cargar las variables de entorno
-dotenv.config();
-
-const mongoDB = process.env.MONGO_URI || '';
+import DatabaseConnection from '../../../infrastructure/database/connection';
 
 /* 
 detaail evaluacion
@@ -25,10 +20,7 @@ detaail evaluacion
 }
 */
 
-// Conexión a MongoDB
-mongoose.connect(mongoDB)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('Error connecting to MongoDB:', err));
+DatabaseConnection.getInstance()
 
 const router = Router();
 

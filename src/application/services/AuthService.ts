@@ -31,9 +31,9 @@ export class AuthService {
   private readonly jwtExpiresIn = '24h' as const;
 
   constructor() {
-    this.jwtSecret = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
+    this.jwtSecret = env.jwtSecret || 'fallback-secret-change-in-production';
 
-    if (!process.env.JWT_SECRET) {
+    if (!env.jwtSecret) {
       console.warn('JWT_SECRET not set in environment variables. Using fallback secret.');
     }
   }

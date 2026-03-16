@@ -2,7 +2,6 @@ import express, { Request, Response } from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import path from 'path';
 
 // Database connection
@@ -29,7 +28,6 @@ import scoringRoutes from '../interfaces/http/routes/scoringRoutes';
 // Middleware
 import { errorHandler, notFoundHandler } from '../shared/middleware/errorHandler';
 import { authenticate } from '../shared/middleware/authMiddleware';
-dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;

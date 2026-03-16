@@ -120,7 +120,7 @@ describe('UserService', () => {
       expect(mockUserStorage.validateUserCredentials).toHaveBeenCalledWith(email, password);
       expect(mockJwt.sign).toHaveBeenCalledWith(
         { userId: mockUser.number_id, email: mockUser.email },
-        process.env.JWT_SECRET || 'your-secret-key',
+        env.jwtSecret || 'your-secret-key',
         { expiresIn: '24h' }
       );
       expect(result).toEqual({
