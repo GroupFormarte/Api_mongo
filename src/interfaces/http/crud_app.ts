@@ -4,38 +4,131 @@ import createDynamicModel from '../../infrastructure/database/dynamicModel';
 import { removeLastS } from '../../shared/utils/utils';
 import DatabaseConnection from '../../infrastructure/database/connection';
 
-/* 
-detaail evaluacion
-{
-  "cod":"",
-  "categoria":"",
-  "sessions":1,
-  "base_calificacion":"",
-  "esquema_cal":"",
-  "nameUser":""
-  "contenido":[
-
-  ""
-  ]
-}
-*/
-
 DatabaseConnection.getInstance()
-
 const router = Router();
 
-const validateIdUnique = (ids: string[], id: string): boolean => {
-
-  let exist: boolean = false;
-  for (const i of ids) {
-    if (i == id) {
-      exist = true;
+router.get('/preguntas-por-tipo/:idPrograma/:type/:value', async (req: Request, res: Response) => {
+  const { idPrograma, type, value } = req.params;
+  const GradosModel = createDynamicModel('Grados', {});
+  const DetailsPreguntas = createDynamicModel('detail_preguntas', {});
+  try {
+    const document: any = await GradosModel.findById(idPrograma);
+    if (!document) {
+      return res.status(404).send();
     }
+    let preguntas: any = [];
+    for (const i of document.childrents) {
+      // const data=await DetailsPreguntas.findById(i.id);
+      const data = await DetailsPreguntas.find({
+        [removeLastS(type)]: value,
+        id: i.id
+      },
+        { "pregunta": 1, "cod": 1, "id": 1 } // Selección de camp
+      )
+      preguntas = data
+    }
+    res.status(200).send(preguntas);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send(error);
   }
-  return exist;
-}
+})
 
-// Función para construir el resultado
+router.get('/preguntas/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const DetailsPreguntas = createDynamicModel('detail_preguntas', {});
+  const documentos: any = await DetailsPreguntas.findById(id);
+  if (!documentos) {
+    return res.status(404).send();
+  }
+  const pregunta = await getData("Preguntas", documentos.pregunta);
+  const respuestas = await Promise.all(documentos.respuestas.map(async (r: any) => await getData("Respuestas", r)));
+  res.status(200).send(
+    {
+      pregunta,
+      respuestas,
+    }
+  );
+})
+
+router.get('/generate-simulacro/:id/:type', async (req: Request, res: Response) => {
+  const { id, type } = req.params;
+  const GradosModel = createDynamicModel('Grados', {});
+  const DetailsPreguntas = createDynamicModel('detail_preguntas', {});
+
+  try {
+    const document: any = await GradosModel.findById(id);
+    if (!document) {
+      return res.status(404).send();
+    }
+
+    const data: any[] = document.config_simulacro[type];
+    const preguntas = await Promise.all(data.map(async (i) => {
+      const documentos = await DetailsPreguntas.find({
+        [removeLastS(type)]: i.nombre,
+      })
+      // .limit(20);
+
+      const docsConvers = await Promise.all(documentos.map(async (doc: any) => {
+        const pregunta = await getData("Preguntas", doc.pregunta);
+        const respuestas = await Promise.all(doc.respuestas.map(async (r: any) => await getData("Respuestas", r)));
+
+        return {
+          ...doc.toObject(),
+          pregunta,
+          respuestas,
+        };
+      }));
+
+      return {
+        name: i.nombre,
+        session_1: i.preguntas.session_1,
+        session_2: i.preguntas.session_2,
+        preguntas: docsConvers
+      };
+    }));
+
+    res.status(200).send(preguntas);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send(error);
+  }
+})
+
+router.get('/detail_preguntas', async (req: Request, res: Response) => {
+  const DynamicModel = createDynamicModel('detail_preguntas', {});
+  const GradosModel = createDynamicModel('Grados', {});
+  const AreasModel = createDynamicModel('Area', {});
+  try {
+    const documents = await DynamicModel.find();
+    if (!documents || documents.length === 0) {
+      return res.status(404).send({ message: 'No documents found' });
+    }
+
+    const result = await buildResult(documents, GradosModel, AreasModel);
+    res.status(200).send(documents);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send(error);
+  }
+});
+
+router.post('/clone-database', async (req: Request, res: Response) => {
+  try {
+    const sourceUri = 'mongodb://arkdevuser:q1CRB%2A8%252%3Fqk@54.164.38.115:27017/arkdevmongo';
+    const targetUri = 'mongodb://localhost:27017/arkappformarte_clone_5';
+    const sourceDbName = 'arkdevmongo';
+    const targetDbName = 'arkappformarte_clone_5';
+
+    await cloneDatabase(sourceUri, targetUri, sourceDbName, targetDbName);
+    res.status(200).send({ message: `Database ${sourceDbName} cloned to ${targetDbName}` });
+  } catch (error) {
+    res.status(500).send({ error: 'Failed to clone the database', details: error });
+  }
+});
+
+
+// Funciones auxiliares
 const buildResult = async (documents: any[], GradosModel: mongoose.Model<any>, AreasModel: mongoose.Model<any>) => {
   const result: any = {};
   for (const document of documents) {
@@ -173,111 +266,16 @@ const buildResult = async (documents: any[], GradosModel: mongoose.Model<any>, A
   return result;
 };
 
-router.get('/preguntas-por-tipo/:idPrograma/:type/:value', async (req: Request, res: Response) => {
-  const { idPrograma, type, value } = req.params;
-  const GradosModel = createDynamicModel('Grados', {});
-  const DetailsPreguntas = createDynamicModel('detail_preguntas', {});
-  try {
-    const document: any = await GradosModel.findById(idPrograma);
-    if (!document) {
-      return res.status(404).send();
+const validateIdUnique = (ids: string[], id: string): boolean => {
+
+  let exist: boolean = false;
+  for (const i of ids) {
+    if (i == id) {
+      exist = true;
     }
-    let preguntas: any = [];
-    for (const i of document.childrents) {
-      // const data=await DetailsPreguntas.findById(i.id);
-      const data = await DetailsPreguntas.find({
-        [removeLastS(type)]: value,
-        id: i.id
-      },
-        { "pregunta": 1, "cod": 1, "id": 1 } // Selección de camp
-      )
-      preguntas = data
-    }
-    res.status(200).send(preguntas);
-  } catch (error) {
-    console.log(error);
-    res.status(500).send(error);
   }
-})
-
-router.get('/preguntas/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const DetailsPreguntas = createDynamicModel('detail_preguntas', {});
-  const documentos: any = await DetailsPreguntas.findById(id);
-  if (!documentos) {
-    return res.status(404).send();
-  }
-  const pregunta = await getData("Preguntas", documentos.pregunta);
-  const respuestas = await Promise.all(documentos.respuestas.map(async (r: any) => await getData("Respuestas", r)));
-  res.status(200).send(
-    {
-      pregunta,
-      respuestas,
-    }
-  );
-})
-
-router.get('/generate-simulacro/:id/:type', async (req: Request, res: Response) => {
-  const { id, type } = req.params;
-  const GradosModel = createDynamicModel('Grados', {});
-  const DetailsPreguntas = createDynamicModel('detail_preguntas', {});
-
-  try {
-    const document: any = await GradosModel.findById(id);
-    if (!document) {
-      return res.status(404).send();
-    }
-
-    const data: any[] = document.config_simulacro[type];
-    const preguntas = await Promise.all(data.map(async (i) => {
-      const documentos = await DetailsPreguntas.find({
-        [removeLastS(type)]: i.nombre,
-      })
-      // .limit(20);
-
-      const docsConvers = await Promise.all(documentos.map(async (doc: any) => {
-        const pregunta = await getData("Preguntas", doc.pregunta);
-        const respuestas = await Promise.all(doc.respuestas.map(async (r: any) => await getData("Respuestas", r)));
-
-        return {
-          ...doc.toObject(),
-          pregunta,
-          respuestas,
-        };
-      }));
-
-      return {
-        name: i.nombre,
-        session_1: i.preguntas.session_1,
-        session_2: i.preguntas.session_2,
-        preguntas: docsConvers
-      };
-    }));
-
-    res.status(200).send(preguntas);
-  } catch (error) {
-    console.log(error);
-    res.status(500).send(error);
-  }
-})
-
-router.get('/detail_preguntas', async (req: Request, res: Response) => {
-  const DynamicModel = createDynamicModel('detail_preguntas', {});
-  const GradosModel = createDynamicModel('Grados', {});
-  const AreasModel = createDynamicModel('Area', {});
-  try {
-    const documents = await DynamicModel.find();
-    if (!documents || documents.length === 0) {
-      return res.status(404).send({ message: 'No documents found' });
-    }
-
-    const result = await buildResult(documents, GradosModel, AreasModel);
-    res.status(200).send(documents);
-  } catch (error) {
-    console.log(error);
-    res.status(500).send(error);
-  }
-});
+  return exist;
+}
 
 async function getData(collection: string, id: string) {
   const DynamicModel = createDynamicModel(collection, {});
@@ -291,7 +289,6 @@ async function getData(collection: string, id: string) {
   }
 }
 
-// Función para clonar una base de datos
 async function cloneDatabase(sourceUri: string, targetUri: string, sourceDbName: string, targetDbName: string): Promise<void> {
   const sourceClient = new mongoose.Mongoose();
   const targetClient = new mongoose.Mongoose();
@@ -348,21 +345,5 @@ async function cloneDatabase(sourceUri: string, targetUri: string, sourceDbName:
     await targetClient.disconnect();
   }
 }
-
-// Ruta para clonar una base de datos
-router.post('/clone-database', async (req: Request, res: Response) => {
-  try {
-    const sourceUri = 'mongodb://arkdevuser:q1CRB%2A8%252%3Fqk@54.164.38.115:27017/arkdevmongo';
-    const targetUri = 'mongodb://localhost:27017/arkappformarte_clone_5';
-    const sourceDbName = 'arkdevmongo';
-    const targetDbName = 'arkappformarte_clone_5';
-
-    await cloneDatabase(sourceUri, targetUri, sourceDbName, targetDbName);
-    res.status(200).send({ message: `Database ${sourceDbName} cloned to ${targetDbName}` });
-  } catch (error) {
-    res.status(500).send({ error: 'Failed to clone the database', details: error });
-  }
-});
-
 
 export default router;

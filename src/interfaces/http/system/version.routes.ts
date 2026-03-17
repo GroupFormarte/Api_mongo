@@ -7,7 +7,6 @@ const router = Router();
 const repository = new DynamicRepository();
 const COLLECTION_NAME = 'version';
 
-// GET /api/version - Get current app version
 router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const versions = await repository.find(COLLECTION_NAME);
 
@@ -21,16 +20,6 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   return ApiResponse.success(res, currentVersion, 'Version retrieved successfully');
 }));
 
-/**
- * POST /api/version - Create app version (first time)
- * Body: {
- *   version: "1.0.0",
- *   buildNumber: "100",
- *   releaseDate: "2025-01-10T00:00:00.000Z",
- *   forceUpdate: false,
- *   updateMessage: "Nueva versión disponible"
- * }
- */
 router.post('/', asyncHandler(async (req: Request, res: Response) => {
   const data = req.body.data;
 
@@ -57,16 +46,7 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
   return ApiResponse.created(res, newVersion, 'Version created successfully');
 }));
 
-/**
- * PUT /api/version - Update app version
- * Body: {
- *   version: "1.0.1",
- *   buildNumber: "101",
- *   releaseDate: "2025-01-10T00:00:00.000Z",
- *   forceUpdate: true,
- *   updateMessage: "Actualización importante"
- * }
- */
+
 router.put('/', asyncHandler(async (req: Request, res: Response) => {
   const data = req.body;
 
@@ -94,7 +74,7 @@ router.put('/', asyncHandler(async (req: Request, res: Response) => {
 
   const updatedVersion = await repository.updateById(COLLECTION_NAME, versionId, updateData);
   if (!updatedVersion) return ApiResponse.notFound(res, 'Failed to update version');
-  
+
   return ApiResponse.updated(res, updatedVersion, 'Version updated successfully');
 }));
 

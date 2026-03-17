@@ -1,10 +1,10 @@
-import express from 'express';
+import { Router } from 'express';
 import { getCurrentTime, getTimeLeft } from './time.controller';
 
-const timeRoute = express.Router();
+const router = Router();
 
-// Rutas
-timeRoute.get('/current-time', getCurrentTime);
-timeRoute.post('/time-left', getTimeLeft);
+router
+    .get('/current-time', getCurrentTime)
+    .post('/time-left', getTimeLeft)
 
-export default timeRoute;
+export default router;

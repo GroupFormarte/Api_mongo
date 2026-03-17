@@ -10,46 +10,16 @@ import {
 import { authenticate } from '../../../shared/middleware/authMiddleware';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
 import { validateBody } from '../../../shared/validation/middleware/validate.middleware';
-import {
-  registerSchema,
-  loginSchema,
-  podiumLoginSchema,
-} from '../../../shared/validation/schemas/auth.schema';
+import { registerSchema, loginSchema, podiumLoginSchema, } from '../../../shared/validation/schemas/auth.schema';
 
-const userRoutes = Router();
+const router = Router();
 
-userRoutes.post(
-  '/register',
-  validateBody(registerSchema),
-  asyncHandler(registerUser)
-);
+router
+  .post('/register', validateBody(registerSchema), asyncHandler(registerUser))
+  .post('/login', validateBody(loginSchema), asyncHandler(loginUser))
+  .post('/podium-login', validateBody(podiumLoginSchema), asyncHandler(loginUserWithPodium))
+  .post('/refresh-token', asyncHandler(refreshTokenHandler))
+  .post('/logout', asyncHandler(logoutUser))
+  .post('/logout-all', authenticate, asyncHandler(logoutAllSessions))
 
-userRoutes.post(
-  '/login',
-  validateBody(loginSchema),
-  asyncHandler(loginUser)
-);
-
-userRoutes.post(
-  '/podium-login',
-  validateBody(podiumLoginSchema),
-  asyncHandler(loginUserWithPodium)
-);
-
-userRoutes.post(
-  '/refresh-token',
-  asyncHandler(refreshTokenHandler)
-);
-
-userRoutes.post(
-  '/logout',
-  asyncHandler(logoutUser)
-);
-
-userRoutes.post(
-  '/logout-all',
-  authenticate,
-  asyncHandler(logoutAllSessions)
-);
-
-export default userRoutes;
+export default router;
