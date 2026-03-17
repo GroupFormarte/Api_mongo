@@ -15,7 +15,8 @@ class ApiResponse {
         const response = {
             success: false,
             error,
-            meta: Object.assign({ timestamp: new Date().toISOString(), version: this.API_VERSION }, (details && { details }))
+            meta: Object.assign({ timestamp: new Date().toISOString(), version: this.API_VERSION }, (details && { details })),
+            message: error
         };
         return res.status(statusCode).json(response);
     }

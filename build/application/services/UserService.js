@@ -8,15 +8,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserService = void 0;
 const UserEntity_1 = require("../../domain/entities/UserEntity");
 const SessionEntity_1 = require("../../domain/entities/SessionEntity");
 const AuthService_1 = require("./AuthService");
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 class UserService {
     constructor(userStorage, sessionStorage) {
         this.userStorage = userStorage;
@@ -24,21 +20,16 @@ class UserService {
     }
     registerUser(userData) {
         return __awaiter(this, void 0, void 0, function* () {
-            // Create and validate user entity
             const userEntity = UserEntity_1.UserEntity.create(userData);
-            if (!userEntity.validate()) {
+            if (!userEntity.validate())
                 throw new Error('Invalid user data');
-            }
-            // Check if user already exists
             const existingUserByEmail = yield this.userStorage.findUserByEmail(userData.email);
-            if (existingUserByEmail) {
+            if (existingUserByEmail)
                 throw new Error('Email already registered');
-            }
             const existingUserByNumberId = yield this.userStorage.findUserByNumberId(userData.number_id);
             if (existingUserByNumberId) {
                 throw new Error('ID number already registered');
             }
-            // Save user
             const savedMetadata = yield this.userStorage.saveUser(userEntity.getMetadata());
             return new UserEntity_1.UserEntity(savedMetadata);
         });
@@ -49,8 +40,13 @@ class UserService {
             if (!user) {
                 throw new Error('Invalid credentials');
             }
-            const token = jsonwebtoken_1.default.sign({ userId: user.number_id, email: user.email }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '24h' });
-            // Create session with IP validation
+            // Generate JWT using AuthService (same format as loginUserWithPodium)
+            const token = AuthService_1.authService.generateJWT(user.number_id, {
+                id: user.number_id,
+                email: user.email,
+                name: user.name
+            });
+            // Create session
             const sessionEntity = SessionEntity_1.SessionEntity.create(user.number_id, token, context.ipAddress, context.userAgent, 24 * 60 * 60 * 1000 // 24 hours
             );
             yield this.sessionStorage.createSession(sessionEntity.getMetadata());

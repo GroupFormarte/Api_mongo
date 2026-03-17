@@ -1,4 +1,6 @@
 import { Express } from 'express';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from '../../shared/config/swagger';
 import { authenticate } from '../../shared/middleware/authMiddleware';
 import userRoutes from './auth/auth.routes';
 import appVersionRoutes from './system/version.routes';
@@ -14,9 +16,8 @@ import crudMobile from './crud_app';
 import progressRoute from './progress/progress.route';
 
 export const registerHttpRoutes = (app: Express): void => {
-    app.get('/', (_req, res) => {
-        res.send('Hello, world!');
-    });
+    // ────────────── Swagger Documentation ──────────────
+    app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
     // Public Routes (no authentication required)
     app.use('/api/auth', userRoutes);
@@ -60,5 +61,6 @@ export const printStartupBanner = (port: string): void => {
     console.log('==============================================================');
 
     console.log(`\nWebSocket endpoint: ws://localhost:${port}/ws/notifications`);
+    console.log(`Swagger UI available at http://localhost:${port}/api/docs`,);
     console.log(`API listening at http://localhost:${port}/api\n`);
 };

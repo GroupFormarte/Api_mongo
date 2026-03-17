@@ -13,8 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importDefault(require("mongoose"));
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+const env_1 = require("../../shared/config/env");
 class DatabaseConnection {
     constructor() {
         this.isConnected = false;
@@ -31,13 +30,13 @@ class DatabaseConnection {
                 return;
             }
             try {
-                const mongoDB = process.env.MONGO_URI || '';
+                const mongoDB = env_1.env.mongoUri || '';
                 if (!mongoDB) {
                     throw new Error('MONGO_URI environment variable is not defined');
                 }
                 yield mongoose_1.default.connect(mongoDB);
                 this.isConnected = true;
-                console.log('Connected to MongoDB');
+                console.log('\nConnected to MongoDB');
             }
             catch (error) {
                 console.error('Error connecting to MongoDB:', error);

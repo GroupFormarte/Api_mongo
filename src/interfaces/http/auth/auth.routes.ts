@@ -9,25 +9,47 @@ import {
 } from './auth.controller';
 import { authenticate } from '../../../shared/middleware/authMiddleware';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
+import { validateBody } from '../../../shared/validation/middleware/validate.middleware';
+import {
+  registerSchema,
+  loginSchema,
+  podiumLoginSchema,
+} from '../../../shared/validation/schemas/auth.schema';
 
 const userRoutes = Router();
 
-// POST /api/auth/register - Register a new user
-userRoutes.post('/register', asyncHandler(registerUser));
+userRoutes.post(
+  '/register',
+  validateBody(registerSchema),
+  asyncHandler(registerUser)
+);
 
-// POST /api/auth/login - Login user (email/password)
-userRoutes.post('/login', asyncHandler(loginUser));
+userRoutes.post(
+  '/login',
+  validateBody(loginSchema),
+  asyncHandler(loginUser)
+);
 
-// POST /api/auth/podium-login - Login user via Podium API
-userRoutes.post('/podium-login', asyncHandler(loginUserWithPodium));
+userRoutes.post(
+  '/podium-login',
+  validateBody(podiumLoginSchema),
+  asyncHandler(loginUserWithPodium)
+);
 
-// POST /api/auth/refresh-token - Refresh JWT token
-userRoutes.post('/refresh-token', asyncHandler(refreshTokenHandler));
+userRoutes.post(
+  '/refresh-token',
+  asyncHandler(refreshTokenHandler)
+);
 
-// POST /api/auth/logout - Logout current session
-userRoutes.post('/logout', asyncHandler(logoutUser));
+userRoutes.post(
+  '/logout',
+  asyncHandler(logoutUser)
+);
 
-// POST /api/auth/logout-all - Logout all user sessions (requires authentication)
-userRoutes.post('/logout-all', authenticate, asyncHandler(logoutAllSessions));
+userRoutes.post(
+  '/logout-all',
+  authenticate,
+  asyncHandler(logoutAllSessions)
+);
 
 export default userRoutes;

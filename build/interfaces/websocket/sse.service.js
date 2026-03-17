@@ -12,6 +12,7 @@ const removeClient = (ws) => {
 };
 exports.removeClient = removeClient;
 const pushToWSClients = (data) => {
+    console.log(`📡 Enviando a ${clients.length} clientes:`, data); // ← confirma
     const message = JSON.stringify(data);
     clients.forEach((client) => {
         if (client.readyState === ws_1.WebSocket.OPEN) {

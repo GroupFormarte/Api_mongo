@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.notFoundHandler = exports.asyncHandler = exports.errorHandler = exports.AppError = void 0;
 const logger_1 = require("../utils/logger");
+const env_1 = require("../config/env");
 class AppError extends Error {
     constructor(message, statusCode = 500, details) {
         super(message);
@@ -54,7 +55,7 @@ const errorHandler = (err, req, res, next) => {
             query: req.query
         });
     }
-    res.status(statusCode).json(Object.assign(Object.assign({ error: message }, (details && { details })), (process.env.NODE_ENV === 'development' && statusCode >= 500 && { stack: err.stack })));
+    res.status(statusCode).json(Object.assign(Object.assign({ error: message }, (details && { details })), (env_1.env.nodeEnv === 'development' && statusCode >= 500 && { stack: err.stack })));
 };
 exports.errorHandler = errorHandler;
 const asyncHandler = (fn) => (req, res, next) => {

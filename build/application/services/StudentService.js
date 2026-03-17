@@ -93,7 +93,7 @@ class StudentService {
             return yield this.repository.create(collectionName, documentData);
         });
     }
-    removeExamenAsignado(ids_estudiantes, id_simulacro) {
+    removeExamenAsignado(ids_estudiantes, id_simulacro, classroomId) {
         return __awaiter(this, void 0, void 0, function* () {
             const updated = [];
             const notFound = [];
@@ -105,7 +105,7 @@ class StudentService {
                 }
                 if (student.examenes_asignados && Array.isArray(student.examenes_asignados)) {
                     const originalLength = student.examenes_asignados.length;
-                    student.examenes_asignados = student.examenes_asignados.filter((examen) => examen.id_simulacro !== id_simulacro);
+                    student.examenes_asignados = student.examenes_asignados.filter((examen) => examen.id_simulacro !== id_simulacro && examen.classroomId !== classroomId);
                     if (originalLength !== student.examenes_asignados.length) {
                         yield this.repository.updateById('students', student._id, { examenes_asignados: student.examenes_asignados });
                         updated.push(id_estudiante);
