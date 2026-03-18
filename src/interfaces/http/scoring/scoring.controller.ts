@@ -23,6 +23,8 @@ export async function calcularBatchSaber11(req: Request, res: Response) {
     try {
         const service = new SemiIrtScoringService(getDb());
         const resultados = await service.calcularBatch(idInstituto, idSimulacro ?? null, estudiantes);
+        // imprimir resultados del primer estudiante
+            console.log('Resultados del primer estudiante:', resultados[estudiantes[0].idEstudiante]);
         return res.status(200).json({ ok: true, resultados });
     } catch (err: unknown) {
         const mensaje = err instanceof Error ? err.message : 'Error desconocido';

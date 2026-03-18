@@ -12,7 +12,7 @@ import { mapAsignaturaToAreaIcfes } from '../mappers/icfesSubjectMapper';
  * - En caso contrario: devuelve (1 - dificultad) limitado entre 0,1 y 0,9.
  */
 function calcularPeso(contador: ContadorPregunta | undefined): number {
-  if (!contador || contador.total_answers < 10) return 0.5;
+  if (!contador || contador.total_answers < 100) return 0.5;
 
   if (contador.status === 'descartar') return 0.3;
 
