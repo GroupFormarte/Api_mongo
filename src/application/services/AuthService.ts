@@ -16,8 +16,6 @@ export class AuthService {
    */
   async validateUserWithPodium(userId: string, token: string): Promise<ValidatedUser> {
     try {
-      console.log('Validating user with Podium API', { userId, tokenLength: token.length });
-
       const response = await axios.get(`${this.podiumApiUrl}${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -27,7 +25,6 @@ export class AuthService {
       });
 
       if (response.status === 200 && response.data) {
-        console.log('User validation successful', { userId, status: response.status });
 
         return {
           userId,
@@ -126,12 +123,6 @@ export class AuthService {
       };
 
       const token = jwt.sign(payload, this.jwtSecret, options);
-
-      console.log('JWT token generated successfully', {
-        userId,
-        expiresIn: this.jwtExpiresIn
-      });
-
       return token;
 
     } catch (error) {
@@ -156,14 +147,12 @@ export class AuthService {
         audience: 'formarte-users'
       }) as JWTPayload;
 
-      console.log('JWT token verified successfully (Podium)', { userId: decoded.userId });
       return decoded;
 
     } catch (error) {
       // Try without issuer/audience (standard login)
       try {
         const decoded = jwt.verify(token, this.jwtSecret) as JWTPayload;
-        console.log('JWT token verified successfully (Standard)', { userId: decoded.userId });
         return decoded;
       } catch (innerError) {
         if (error instanceof jwt.TokenExpiredError) {
@@ -214,8 +203,6 @@ export class AuthService {
       // Generate JWT token for our service
       const jwtToken = this.generateJWT(userId, validation.userData);
 
-      console.log('User authentication completed successfully', { userId });
-
       return {
         success: true,
         token: jwtToken,
@@ -259,8 +246,6 @@ export class AuthService {
 
       // Generate new token
       const newToken = this.generateJWT(decoded.userId, decoded.userData);
-
-      console.log("JWT token refreshed successfully", { userId: decoded.userId });
 
       return { success: true, token: newToken };
     } catch (error) {

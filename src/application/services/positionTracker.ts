@@ -44,7 +44,6 @@ export async function startTrackingPositions(): Promise<void> {
                                 },
                             }
                         );
-                        console.log(`Actualizada posición de ${estudiante.id_student} en grado ${grado} a ${posicionActual}`);
                     }
                 }
             }

@@ -24,8 +24,15 @@ export const loginSchema = z.object({
 
 export const podiumLoginSchema = z.object({
   userId: z.string().min(1, { message: 'userId es requerido' }),
-  podiumToken: z.string().min(1, { message: 'podiumToken es requerido' }),
-}).strict();
+  podiumToken: z.string().min(1, { message: 'podiumToken es requerido' }).optional(),
+  token: z.string().min(1, { message: 'token es requerido' }).optional(),
+}).strict().refine(
+  (data) => Boolean(data.podiumToken || data.token),
+  {
+    message: 'podiumToken o token es requerido',
+    path: ['podiumToken'],
+  }
+);
 
 export const refreshTokenSchema = z.object({
   // Token viene en header, no en body

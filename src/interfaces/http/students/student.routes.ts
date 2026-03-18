@@ -36,7 +36,6 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
 
 router.get('/get-my-position/:grado/:id_student', asyncHandler(async (req: Request, res: Response) => {
   const { id_student, grado } = req.params;
-  console.log({ id_student, grado });
 
   const result = await studentService.getStudentPosition(grado, id_student);
 
@@ -126,7 +125,6 @@ router.post('/remove-examen', asyncHandler(async (req: Request, res: Response) =
 // Get student by ID
 router.get('/:collectionName/:id', asyncHandler(async (req: Request, res: Response) => {
   const { collectionName, id } = req.params;
-  console.log(collectionName, id);
 
   const result = await studentService.getStudentById(collectionName, id);
   if (!result) {
@@ -176,7 +174,6 @@ router.put('/:id', asyncHandler(async (req: Request, res: Response) => {
 router.put('/:collectionName/:id', asyncHandler(async (req: Request, res: Response) => {
   const { collectionName, id } = req.params;
   const data = req.body;
-  console.log({ collectionName, id, data })
   const document = await repository.updateById(collectionName, id, data);
   if (!document) {
     throw new AppError('Documento no encontrado', 404);
@@ -221,7 +218,6 @@ router.post('/:collectionName/:id?', asyncHandler(async (req: Request, res: Resp
 
   const idAux = id ?? data.id_student;
   const result = await studentService.createStudent(collectionName, data, idAux);
-  console.log("Creating student:", { collectionName, id });
 
   return ApiResponse.created(res, result, 'Student created successfully');
 }));

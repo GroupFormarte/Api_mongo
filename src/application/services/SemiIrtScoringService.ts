@@ -262,7 +262,6 @@ export class SemiIrtScoringService {
         const resps = respuestasPorEstudiante.get(est.idEstudiante) ?? [];
         const pesosEst = resps.map(r => calcularPeso(contadorMap.get(r.idPregunta)));
         const pesoPromedio = pesosEst.reduce((s, p) => s + p, 0) / pesosEst.length;
-        console.log(`[IRT] Est=${est.idEstudiante} | respuestas=${resps.length} | pesoPromedio=${pesoPromedio.toFixed(4)} | score=${resultados[est.idEstudiante]?.score}`);
       }
 
       bulkStudents.push({

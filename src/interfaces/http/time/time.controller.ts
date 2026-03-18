@@ -71,7 +71,6 @@ export const getTimeLeft = (req: Request, res: Response): void => {
         const formattedTimeLeft = `${hours.toString().padStart(2, '0')}:${minutes
             .toString()
             .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        console.log([now.toString()])
 
         res.json({
             timeLeft: formattedTimeLeft,

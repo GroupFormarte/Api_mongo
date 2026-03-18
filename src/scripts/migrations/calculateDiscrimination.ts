@@ -77,12 +77,12 @@ async function calcularDiscriminacionParaTipo(
     }
   }
 
-  console.log(`👥 Estudiantes con score ${config.scoreField}: ${scoresMap.size}`);
+  console.log(`Estudiantes con score ${config.scoreField}: ${scoresMap.size}`);
 
   if (scoresMap.size < 6) {
-    console.log(`⚠️  Muy pocos estudiantes con score (${scoresMap.size}). Se necesitan al menos 6.`);
+    console.log(`Muy pocos estudiantes con score (${scoresMap.size}). Se necesitan al menos 6.`);
     if (tipo === 'unal') {
-      console.log(`   Ejecuta primero el endpoint /api/scoring/unal/calcular-batch para poblar scoreUnal.`);
+      console.log(`Ejecuta primero el endpoint /api/scoring/unal/calcular-batch para poblar scoreUnal.`);
     }
     return;
   }
@@ -94,8 +94,8 @@ async function calcularDiscriminacionParaTipo(
   const grupoSuperior = new Set(estudiantesOrdenados.slice(0, n27).map(([id]) => id));
   const grupoInferior = new Set(estudiantesOrdenados.slice(-n27).map(([id]) => id));
 
-  console.log(`📈 Grupo superior (27%): ${grupoSuperior.size} estudiantes`);
-  console.log(`📉 Grupo inferior (27%): ${grupoInferior.size} estudiantes`);
+  console.log(`Grupo superior (27%): ${grupoSuperior.size} estudiantes`);
+  console.log(`Grupo inferior (27%): ${grupoInferior.size} estudiantes`);
 
   const respuestasPorPregunta = await db.collection('resultados_preguntas').aggregate([
     { $match: { asignatura: { $in: config.asignaturas as unknown as string[] } } },
@@ -108,7 +108,7 @@ async function calcularDiscriminacionParaTipo(
     },
   ]).toArray();
 
-  console.log(`\n📝 Preguntas a procesar: ${respuestasPorPregunta.length}`);
+  console.log(`\nPreguntas a procesar: ${respuestasPorPregunta.length}`);
 
   let actualizadas = 0;
   let sinDatos = 0;
@@ -171,7 +171,7 @@ async function calcularDiscriminacionParaTipo(
   const revisar = discriminaciones.filter(d => d >= 0.1 && d < 0.3).length;
   const descartar = discriminaciones.filter(d => d < 0.1).length;
 
-  console.log(`\n✅ Discriminación ${config.label} calculada`);
+  console.log(`\n Discriminación ${config.label} calculada`);
   console.log(`   Preguntas actualizadas:  ${actualizadas}`);
   console.log(`   Sin datos suficientes:   ${sinDatos}`);
   if (discriminaciones.length > 0) {
@@ -185,12 +185,11 @@ async function calcularDiscriminacionParaTipo(
 async function run(): Promise<void> {
   await mongoose.connect(MONGO_URI);
   const db = mongoose.connection.db!;
-  console.log('✅ Conectado a MongoDB');
 
   const tipoArg = process.argv.find(a => a.startsWith('--tipo='))?.split('=')[1] as TipoExamen | undefined;
 
   if (tipoArg && !CONFIG_EXAMEN[tipoArg]) {
-    console.error(`❌ Tipo inválido: ${tipoArg}. Usa: saber11 | unal`);
+    console.error(`Tipo inválido: ${tipoArg}. Usa: saber11 | unal`);
     process.exit(1);
   }
 

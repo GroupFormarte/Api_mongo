@@ -18,7 +18,6 @@ export const generateReport = async (req: Request, res: Response) => {
   const studentsOrder = [...students].sort(
     (a, b) => (a.puesto ?? 0) - (b.puesto ?? 0),
   );
-  console.log(students[0]);
 
   const browser = await puppeteer.launch({
     headless: true,
@@ -90,7 +89,6 @@ export const generateReport = async (req: Request, res: Response) => {
     () => {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
-        console.log(`Archivo temporal eliminado: ${filePath}`);
       }
     },
     30 * 60 * 1000,

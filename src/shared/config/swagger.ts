@@ -89,11 +89,16 @@ const options = {
         },
         PodiumLoginRequest: {
           type: 'object',
-          required: ['userId', 'podiumToken'],
+          required: ['userId'],
           properties: {
             userId: { type: 'string', example: '12345' },
             podiumToken: { type: 'string', example: 'podium_token_abc123' },
+            token: { type: 'string', example: 'podium_token_abc123', description: 'Alias legado de podiumToken' },
           },
+          oneOf: [
+            { required: ['userId', 'podiumToken'] },
+            { required: ['userId', 'token'] },
+          ],
         },
         User: {
           type: 'object',

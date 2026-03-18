@@ -29,7 +29,6 @@ router.get('/preguntas-por-tipo/:idPrograma/:type/:value', async (req: Request, 
     }
     res.status(200).send(preguntas);
   } catch (error) {
-    console.log(error);
     res.status(500).send(error);
   }
 })
@@ -90,7 +89,6 @@ router.get('/generate-simulacro/:id/:type', async (req: Request, res: Response) 
 
     res.status(200).send(preguntas);
   } catch (error) {
-    console.log(error);
     res.status(500).send(error);
   }
 })
@@ -108,7 +106,6 @@ router.get('/detail_preguntas', async (req: Request, res: Response) => {
     const result = await buildResult(documents, GradosModel, AreasModel);
     res.status(200).send(documents);
   } catch (error) {
-    console.log(error);
     res.status(500).send(error);
   }
 });
@@ -139,7 +136,7 @@ const buildResult = async (documents: any[], GradosModel: mongoose.Model<any>, A
     if (grado == "Preuniversitario Unal") {
       /* matemáticas, ciencias naturales, ciencias sociales, análisis textual y análisis de imagen */
 
-      if (area.trim().includes('Imagen')) console.log({ grado, area });
+      if (area.trim().includes('Imagen')) 
 
       if (area.trim() == 'Matemáticas' || area.trim() == 'Ciencias Sociales' || area.trim() == 'Ciencias Naturales' || area.trim() == 'Análisis Textual' || area.trim() == 'Análisis de la Imagen') {
 
@@ -249,12 +246,7 @@ const buildResult = async (documents: any[], GradosModel: mongoose.Model<any>, A
           asignaturas: result[grado].asignaturas,
 
         }
-        // Agregar los elementos que faltan
         mergeConfigs(existingConfig, result[grado]);
-
-        // Guardar la configuración actualizada
-        // console.log({configFinal,
-        // childrents});
         await GradosModel.findByIdAndUpdate(element._id, {
           config_simulacro: configFinal,
           childrents: childrents
@@ -283,7 +275,6 @@ async function getData(collection: string, id: string) {
     const document = await DynamicModel.findById(id);
     return document;
   } catch (error) {
-    console.log(error)
 
     return undefined;
   }
@@ -297,19 +288,15 @@ async function cloneDatabase(sourceUri: string, targetUri: string, sourceDbName:
     // Conexión a la base de datos de origen
     await sourceClient.connect(sourceUri);
     const sourceDb: any = sourceClient.connection.db;
-    console.log(`Connected to source database: ${sourceDbName}`);
 
     // Conexión a la base de datos de destino
     await targetClient.connect(targetUri);
     const targetDb: any = targetClient.connection.db;
-    console.log(`Connected to target database: ${targetDbName}`);
 
     // Drop target database if it exists
     try {
       await targetDb.dropDatabase();
-      console.log(`Target database ${targetDbName} dropped`);
     } catch (error) {
-      console.log(`Target database ${targetDbName} does not exist or could not be dropped`);
     }
 
     // Listar todas las colecciones de la base de datos origen
@@ -318,7 +305,6 @@ async function cloneDatabase(sourceUri: string, targetUri: string, sourceDbName:
     // Iterar sobre cada colección y clonarla
     for (const collectionInfo of collections) {
       const collectionName = collectionInfo.name;
-      console.log(`Cloning collection: ${collectionName}`);
 
       const sourceCollection = sourceDb.collection(collectionName);
       const targetCollection = targetDb.collection(collectionName);
@@ -329,13 +315,10 @@ async function cloneDatabase(sourceUri: string, targetUri: string, sourceDbName:
       // Insertar los documentos en la colección destino
       if (documents.length > 0) {
         await targetCollection.insertMany(documents);
-        console.log(`Cloned ${documents.length} documents into ${targetDbName}.${collectionName}`);
       } else {
-        console.log(`Collection ${collectionName} is empty, skipping...`);
       }
     }
 
-    console.log(`Database ${sourceDbName} successfully cloned to ${targetDbName}`);
   } catch (error) {
     console.error('Error during database cloning:', error);
     throw error;

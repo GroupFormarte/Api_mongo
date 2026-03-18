@@ -67,7 +67,6 @@ export class StudentService {
   }
 
   async getStudentByStudentId(collectionName: string, id_estudiante: string): Promise<any | null> {
-    console.log(collectionName, { id_estudiante })
     return await this.repository.findOne(collectionName, { id_estudiante });
   }
 
@@ -85,7 +84,6 @@ export class StudentService {
 
   async createStudent(collectionName: string, data: any, id?: string): Promise<any> {
     const documentData = id ? { ...data, id } : data;
-    console.log(".",{ documentData });
     
     return await this.repository.create(collectionName, documentData);
   }

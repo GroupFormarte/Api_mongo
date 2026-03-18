@@ -27,7 +27,6 @@ class DatabaseConnection {
 
       await mongoose.connect(mongoDB);
       this.isConnected = true;
-      console.log('\nConnected to MongoDB');
     } catch (error) {
       console.error('Error connecting to MongoDB:', error);
       throw error;
@@ -42,7 +41,6 @@ class DatabaseConnection {
     try {
       await mongoose.disconnect();
       this.isConnected = false;
-      console.log('Disconnected from MongoDB');
     } catch (error) {
       console.error('Error disconnecting from MongoDB:', error);
       throw error;

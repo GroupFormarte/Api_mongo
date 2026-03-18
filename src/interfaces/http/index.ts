@@ -61,6 +61,6 @@ export const printStartupBanner = (port: string): void => {
     console.log('==============================================================');
 
     console.log(`\nWebSocket endpoint: ws://localhost:${port}/ws/notifications`);
-    console.log(`Swagger UI available at http://localhost:${port}/api/docs`,);
+    console.log(`Swagger: http://localhost:${port}/api/docs`,);
     console.log(`API listening at http://localhost:${port}/api\n`);
 };

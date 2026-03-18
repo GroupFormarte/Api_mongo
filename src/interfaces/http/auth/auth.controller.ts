@@ -123,16 +123,17 @@ export const logoutAllSessions = async (req: AuthRequest, res: Response, next: N
 
 export const loginUserWithPodium = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { userId, token } = req.body;
+    const { userId, podiumToken, token } = req.body;
+    const providedToken = podiumToken ?? token;
 
-    if (!userId || !token) {
+    if (!userId || !providedToken) {
       return ResponseHandler.badRequest(res, 'userId and podiumToken are required');
     }
 
     const ipAddress = 'not-validated';
     const userAgent = getUserAgent(req);
 
-    const result = await userService.loginUserWithPodium(userId, token, {
+    const result = await userService.loginUserWithPodium(userId, providedToken, {
       ipAddress,
       userAgent
     });
