@@ -183,7 +183,7 @@ export const updateAssignedSimulationSessionDetails = async (req: Request, res: 
 
 export const updateDocumentById = async (req: Request, res: Response) => {
   const { collectionName, id } = req.params;
-  const data = req.body;
+  const data = req.body.data || req.body;
 
   const document = await repository.updateById(collectionName, id, data);
   if (!document) {
@@ -228,7 +228,7 @@ export const updateOrCreateStudentAnswers = async (req: Request, res: Response) 
 
 export const partialUpdateDocumentById = async (req: Request, res: Response) => {
   const { collectionName, id } = req.params;
-  const data = req.body;
+  const data = req.body.data || req.body;
 
   if (!data || Object.keys(data).length === 0) {
     return ApiResponse.badRequest(res, 'Se requiere al menos un campo para actualizar');
