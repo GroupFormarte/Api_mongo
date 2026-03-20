@@ -82,7 +82,6 @@ export const createDocument = async (req: Request, res: Response) => {
   const { collectionName, id } = req.params;
   const schemaDefinition = req.body.schema || {};
   const data = req.body.data || req.body;
-
   const idAux = id ?? data.id_student;
   const documentData = idAux ? { ...data, id: idAux } : data;
 

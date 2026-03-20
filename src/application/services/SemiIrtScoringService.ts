@@ -209,21 +209,21 @@ export class SemiIrtScoringService {
         const areasDetalle: PuntajeArea[] = [];
         let correctas = 0, incorrectas = 0;
 
-      for (const subject of est.subjects) {
-        const area = mapAsignaturaToAreaIcfes(subject.name);
-        if (!area) continue;
+        for (const subject of est.subjects) {
+          const area = mapAsignaturaToAreaIcfes(subject.name);
+          if (!area) continue;
 
-        const c = subject.correctAnswers ?? 0;
-        const i = subject.incorrectAnswers ?? 0;
-        const total = c + i;
-        if (total === 0) continue;
+          const c = subject.correctAnswers ?? 0;
+          const i = subject.incorrectAnswers ?? 0;
+          const total = c + i;
+          if (total === 0) continue;
 
-        const puntajeBase = parseFloat(((c / total) * 100).toFixed(1));
-        areaNormalizada.set(area, puntajeBase);
-        areasDetalle.push({ area, puntaje: puntajeBase, correctas: c, incorrectas: i, total });
-        correctas += c;
-        incorrectas += i;
-      }
+          const puntajeBase = parseFloat(((c / total) * 100).toFixed(1));
+          areaNormalizada.set(area, puntajeBase);
+          areasDetalle.push({ area, puntaje: puntajeBase, correctas: c, incorrectas: i, total });
+          correctas += c;
+          incorrectas += i;
+        }
 
         puntajes.push({
           idEstudiante: est.idEstudiante,
@@ -261,7 +261,7 @@ export class SemiIrtScoringService {
       for (const est of estudiantes.slice(0, 3)) {
         const resps = respuestasPorEstudiante.get(est.idEstudiante) ?? [];
         const pesosEst = resps.map(r => calcularPeso(contadorMap.get(r.idPregunta)));
-        const pesoPromedio = pesosEst.reduce((s, p) => s + p, 0) / pesosEst.length;
+        pesosEst.reduce((s, p) => s + p, 0) / pesosEst.length;
       }
 
       bulkStudents.push({

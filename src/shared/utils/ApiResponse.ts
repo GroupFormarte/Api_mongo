@@ -32,9 +32,23 @@ export class ApiResponse {
     statusCode: number = 200,
     meta?: any
   ): Response {
+    let plainData = data;
+    if (data && typeof data === 'object') {
+      if ('toObject' in data && typeof (data as any).toObject === 'function') {
+        plainData = (data as any).toObject() as T;
+      } else if (Array.isArray(data)) {
+        plainData = data.map(item => {
+          if (item && typeof item === 'object' && 'toObject' in item && typeof (item as any).toObject === 'function') {
+            return (item as any).toObject();
+          }
+          return item;
+        }) as any as T;
+      }
+    }
+
     const response: ApiResponseData<T> = {
       success: true,
-      data,
+      data: plainData,
       message,
       meta: {
         timestamp: new Date().toISOString(),
@@ -75,7 +89,7 @@ export class ApiResponse {
     message?: string
   ): Response {
     const totalPages = Math.ceil(total / limit);
-    
+
     return this.success(res, data, message, 200, {
       pagination: {
         page,
@@ -164,7 +178,7 @@ export class ApiResponse {
     message?: string
   ): Response {
     const defaultMessage = `Bulk operation completed. ${results.successful.length}/${results.total} successful`;
-    
+
     return this.success(res, {
       successful: results.successful,
       failed: results.failed,

@@ -23,26 +23,30 @@ import {
 const router = Router();
 
 router
-  .post('/:collectionName/:id?', asyncHandler(createDocument))
-  .post('/:collectionName/bulk', asyncHandler(getDocumentsByIdsBulk))
   .post('/system/cache/preload', asyncHandler(preloadModels))
-
-  .get('/:collectionName/search/:field/:value', asyncHandler(searchDocumentsByField))
-  .get('/:collectionName/multi-search/:query', asyncHandler(multiFieldSearch))
-  .get('/:collectionName/category/:category', asyncHandler(searchByCategory))
-  .get('/:collectionName', asyncHandler(getAllDocuments))
-  .get('/:collectionName/:id', asyncHandler(getDocumentById))
   .get('/system/cache/stats', asyncHandler(getCacheStats))
   .get('/system/collections/:collectionName/stats', asyncHandler(getCollectionStats))
+  .delete('/system/cache/:collectionName?', asyncHandler(clearCache));
 
-  .put('/:collectionName/:id', asyncHandler(updateDocumentById))
+router
+  .post('/:collectionName/bulk', asyncHandler(getDocumentsByIdsBulk));
 
-  .patch('/:collectionName/:id', asyncHandler(partialUpdateDocumentById))
+router
+  .get('/:collectionName/search/:field/:value', asyncHandler(searchDocumentsByField))
+  .get('/:collectionName/multi-search/:query', asyncHandler(multiFieldSearch))
+  .get('/:collectionName/category/:category', asyncHandler(searchByCategory));
+
+router
   .patch('/assigned_simulation/:id/simulacro/:simulacroId/resultados', asyncHandler(updateAssignedSimulationResults))
   .patch('/assigned_simulation/:id/simulacro/:simulacroId/session-details', asyncHandler(updateAssignedSimulationSessionDetails))
-  .patch('/assigned_simulation/:documentId/simulacro/:simulacroId/student/:userId', asyncHandler(updateOrCreateStudentAnswers))
+  .patch('/assigned_simulation/:documentId/simulacro/:simulacroId/student/:userId', asyncHandler(updateOrCreateStudentAnswers));
 
-  .delete('/:collectionName/:id', asyncHandler(deleteDocumentById))
-  .delete('/system/cache/:collectionName?', asyncHandler(clearCache))
+router
+  .post('/:collectionName/:id?', asyncHandler(createDocument))
+  .get('/:collectionName', asyncHandler(getAllDocuments))
+  .get('/:collectionName/:id', asyncHandler(getDocumentById))
+  .put('/:collectionName/:id', asyncHandler(updateDocumentById))
+  .patch('/:collectionName/:id', asyncHandler(partialUpdateDocumentById))
+  .delete('/:collectionName/:id', asyncHandler(deleteDocumentById));
 
 export default router;
