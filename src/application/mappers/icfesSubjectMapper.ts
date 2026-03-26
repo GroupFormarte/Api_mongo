@@ -1,6 +1,8 @@
 import { AreaSaber11 } from "../../domain/interfaces/saber.interfaces";
 
 export function mapAsignaturaToAreaIcfes(asignatura: string): AreaSaber11 | null {
+  if (!asignatura) return null;
+
   const a = asignatura
     .toLowerCase()
     .normalize('NFD')
@@ -14,8 +16,8 @@ export function mapAsignaturaToAreaIcfes(asignatura: string): AreaSaber11 | null
   if (a.includes('ciencias naturales') || a.includes('biologia') ||
     a.includes('fisica') || a.includes('quimica')) return 'Ciencias Naturales';
 
-  if (a.includes('ciencias sociales') || a.includes('competencia ciudadana'))
-    return 'Sociales y Ciudadanas';
+  if (a.includes('ciencias sociales') || a.includes('sociales') ||
+    a.includes('competencia ciudadana')) return 'Sociales y Ciudadanas';
 
   if (a.includes('ingles') || a.includes('english')) return 'Inglés';
 
