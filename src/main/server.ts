@@ -5,10 +5,10 @@ import { env } from '../shared/config/env';
 
 import DatabaseConnection from '../infrastructure/database/connection';
 
-import { handleWebSocketConnection } from '../interfaces/websocket/sse.controller';
+import { handleWebSocketConnection } from '../presentation/websocket/sse.controller';
 import { startTrackingPositions } from '../application/services/positionTracker';
-import { printStartupBanner, registerHttpRoutes } from '../interfaces/http';
-import { registerUploadFallbackRoute } from '../interfaces/http/media/uploadFallback.route';
+import { printStartupBanner, registerHttpRoutes } from '../presentation/http';
+import { registerUploadFallbackRoute } from '../presentation/http/media/uploadFallback.route';
 import { setupMiddlewares } from './setupMiddlewares';
 
 // Middleware

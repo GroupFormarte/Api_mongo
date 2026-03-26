@@ -182,4 +182,4 @@ curl -X POST http://localhost:3000/api/qualifier/upload \
 
 - Si falla el arranque por MongoDB, revisar `MONGO_URI` en `.env`.
 - Varios endpoints en `media` son placeholders y responden datos simulados o `501`.
-- Para cambios de rutas, actualizar primero `src/interfaces/http/index.ts` y luego esta guia.
+- Para cambios de rutas, actualizar primero `src/presentation/http/index.ts` y luego esta guia.

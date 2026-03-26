@@ -5,7 +5,7 @@ Backend en Node.js + TypeScript + Express + MongoDB para operaciones academicas,
 ## Estado Actual del Proyecto
 
 - Entrada de desarrollo: `src/main/server.ts`
-- Registro de rutas HTTP: `src/interfaces/http/index.ts`
+- Registro de rutas HTTP: `src/presentation/http/index.ts`
 - WebSocket: `/ws/notifications`
 - Base path API: `/api/*`
 
@@ -16,7 +16,7 @@ src/
   main/
     server.ts
     setupMiddlewares.ts
-  interfaces/
+  presentation/
     http/
       index.ts
       auth/
@@ -93,4 +93,4 @@ Ver `FORMARTE_API_GUIDE.md` para endpoints por modulo, ejemplos y convenciones d
 - Error `ECONNREFUSED 127.0.0.1:27017`:
   `MONGO_URI` apunta a localhost sin MongoDB activo. Configura una URI valida (local o remota) en `.env`.
 - Error `Cannot find module ...` en rutas:
-  revisar imports relativos dentro de `src/interfaces/http/*` despues de mover archivos.
+  revisar imports relativos dentro de `src/presentation/http/*` despues de mover archivos.

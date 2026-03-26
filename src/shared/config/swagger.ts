@@ -115,8 +115,8 @@ const options = {
     security: [],
   },
   apis: [
-    './src/interfaces/http/**/*.routes.ts',
-    './src/interfaces/http/**/*.docs.ts',
+    './src/presentation/http/**/*.routes.ts',
+    './src/presentation/http/**/*.docs.ts',
   ],
 };
 
