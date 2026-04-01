@@ -1,19 +1,19 @@
 import { Express } from 'express';
 import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from '../../shared/config/swagger';
-import { authenticate } from '../../shared/middleware/authMiddleware';
-import userRoutes from './auth/auth.routes';
-import appVersionRoutes from './system/version.routes';
-import scoringRoutes from './scoring/scoring.routes';
-import academicRoutes from './academic/academic.routes';
-import studentRoutes from './students/student.routes';
-import systemRoutes from './system/system.routes';
-import mediaRoutes from './media/media.routes';
-import pdfRoutes from './pdf/pdf.routes';
-import qualifierRoute from './qualifier/qualifier.routes';
-import timeRoute from './time/time_zone';
-import crudMobile from './crud_app';
-import progressRoute from './progress/progress.route';
+import { swaggerSpec } from '../shared/config/swagger';
+import { authenticate } from '../shared/middleware/authMiddleware';
+import userRoutes from './http/auth/auth.routes';
+import appVersionRoutes from './http/system/version.routes';
+import scoringRoutes from './http/scoring/scoring.routes';
+import academicRoutes from './http/academic/academic.routes';
+import studentRoutes from './http/students/student.routes';
+import systemRoutes from './http/system/system.routes';
+import mediaRoutes from './http/media/media.routes';
+import pdfRoutes from './http/pdf/pdf.routes';
+import qualifierRoute from './http/qualifier/qualifier.routes';
+import timeRoute from './http/time/time_zone';
+import crudMobile from './http/crud_app';
+import progressRoute from './http/progress/progress.route';
 
 export const registerHttpRoutes = (app: Express): void => {
     // ────────────── Swagger Documentation ──────────────
@@ -61,6 +61,6 @@ export const printStartupBanner = (port: string): void => {
     console.log('==============================================================');
 
     console.log(`\nWebSocket endpoint: ws://localhost:${port}/ws/notifications`);
-    console.log(`Swagger: http://localhost:${port}/api/docs`,);
-    console.log(`API listening at http://localhost:${port}/api\n`);
+    console.log(`API listening at http://localhost:${port}/api`);
+    console.log(`Swagger: http://localhost:${port}/api/docs\n`,);
 };

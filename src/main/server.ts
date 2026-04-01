@@ -7,7 +7,7 @@ import DatabaseConnection from '../infrastructure/database/connection';
 
 import { handleWebSocketConnection } from '../presentation/websocket/sse.controller';
 import { startTrackingPositions } from '../application/services/positionTracker';
-import { printStartupBanner, registerHttpRoutes } from '../presentation/http';
+import { printStartupBanner, registerHttpRoutes } from '../presentation';
 import { registerUploadFallbackRoute } from '../presentation/http/media/uploadFallback.route';
 import { setupMiddlewares } from './setupMiddlewares';
 
