@@ -65,7 +65,7 @@ function aplicarCurvaIcfes(pctAciertos: number): number {
  * - >300 respuestas              → peso real basado en dificultad + discriminación
  */
 function calcularPeso(contador: ContadorPregunta | undefined): number {
-  if (!contador || contador.total_answers < 100) return 0.5;
+  if (!contador || contador.total_answers < 10) return 0.5;
 
   if (contador.status === 'descartar') return 0.3;
 
