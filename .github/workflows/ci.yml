@@ -89,7 +89,7 @@ jobs:
           echo "📊 Compressed: $(du -sh ${{ steps.vars.outputs.ARTIFACT_NAME }}.tar.gz | cut -f1)"
 
       - name: Install Python dependencies
-        run: pip install requests PyJWT cryptography
+        run: pip install Office365-REST-Python-Client
 
       - name: Upload artifact to SharePoint
         env:
@@ -102,85 +102,73 @@ jobs:
           SHAREPOINT_FOLDER: ${{ secrets.SHAREPOINT_FOLDER }}
         run: |
           cat > /tmp/upload_sp.py << 'EOFPY'
-          import os, sys, time, uuid, hashlib, requests, jwt, base64, binascii
-          from cryptography.hazmat.primitives import serialization
-          from cryptography.hazmat.backends import default_backend
+          import os, sys, tempfile
+          from office365.sharepoint.client_context import ClientContext
 
-          TENANT_ID      = os.environ['AZURE_TENANT_ID']
-          CLIENT_ID      = os.environ['AZURE_CLIENT_ID']
-          THUMBPRINT     = os.environ['AZURE_CERT_THUMBPRINT']
-          PK_PEM         = os.environ['AZURE_PRIVATE_KEY']
-          SITE_URL       = os.environ['SHAREPOINT_SITE_URL'].rstrip('/')
-          FOLDER_SUFFIX  = f"{os.environ['SHAREPOINT_FOLDER']}/{os.environ.get('PROJECT_NAME','')}"
-          ARTIFACT_FILE  = os.environ['ARTIFACT_FILE']
-          SITE_HOST      = SITE_URL.split('/')[2]
-          SITE_PATH      = '/' + '/'.join(SITE_URL.split('/')[3:])
-          DOC_LIB        = 'Documentos compartidos'
-          CHUNK_SIZE     = 10 * 1024 * 1024
+          TENANT_ID    = os.environ['AZURE_TENANT_ID']
+          CLIENT_ID    = os.environ['AZURE_CLIENT_ID']
+          THUMBPRINT   = os.environ['AZURE_CERT_THUMBPRINT']
+          PK_PEM       = os.environ['AZURE_PRIVATE_KEY']
+          SITE_URL     = os.environ['SHAREPOINT_SITE_URL'].rstrip('/')
+          SP_FOLDER    = os.environ['SHAREPOINT_FOLDER']
+          PROJECT_NAME = os.environ.get('PROJECT_NAME', '')
+          ARTIFACT     = os.environ['ARTIFACT_FILE']
+          DOC_LIB      = 'Documentos compartidos'
+          CHUNK_SIZE   = 10 * 1024 * 1024
 
-          def normalize_pem(s):
-              return '\n'.join(l.strip() for l in s.strip().splitlines())
+          # office365 lib requires a PEM file path, write secret to temp file
+          pem_fd, cert_path = tempfile.mkstemp(suffix='.pem')
+          with os.fdopen(pem_fd, 'w') as pf:
+              pf.write('\n'.join(l.strip() for l in PK_PEM.strip().splitlines()))
 
-          def get_token():
-              now = int(time.time())
-              payload = {'aud': f'https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token',
-                         'exp': now+600, 'iss': CLIENT_ID,
-                         'jti': hashlib.sha256(os.urandom(32)).hexdigest(),
-                         'nbf': now, 'sub': CLIENT_ID}
-              tb  = binascii.unhexlify(THUMBPRINT.replace(':','').replace(' ',''))
-              x5t = base64.urlsafe_b64encode(tb).rstrip(b'=').decode('ascii')
-              pk  = serialization.load_pem_private_key(normalize_pem(PK_PEM).encode(), password=None, backend=default_backend())
-              ca  = jwt.encode(payload, pk, algorithm='RS256', headers={'x5t': x5t})
-              r   = requests.post(f'https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token',
-                                  data={'client_id': CLIENT_ID,
-                                        'client_assertion_type': 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
-                                        'client_assertion': ca,
-                                        'scope': f'https://{SITE_HOST}/.default',
-                                        'grant_type': 'client_credentials'}, timeout=30)
-              if r.status_code != 200: print(f"❌ Token [{r.status_code}]: {r.text[:200]}"); sys.exit(1)
-              return r.json()['access_token']
+          try:
+              print("🔐 Authenticating via office365-rest-python-client...")
+              ctx = ClientContext(SITE_URL).with_client_certificate(
+                  TENANT_ID, CLIENT_ID, THUMBPRINT, cert_path
+              )
+              web = ctx.web
+              ctx.load(web)
+              ctx.execute_query()
 
-          def ensure_folder(token):
-              from urllib.parse import quote
-              api = f"https://{SITE_HOST}{SITE_PATH}/_api/web"
-              h   = {'Authorization': f'Bearer {token}', 'Accept': 'application/json;odata=nometadata'}
-              sp  = os.environ['SHAREPOINT_FOLDER']; pn = os.environ.get('PROJECT_NAME','')
-              par = f"{SITE_PATH}/{DOC_LIB}/{sp}"; tgt = f"{par}/{pn}"
-              if requests.get(f"{api}/GetFolderByServerRelativeUrl('{tgt}')", headers=h, timeout=30).status_code == 200: return
-              requests.post(f"{api}/GetFolderByServerRelativeUrl('{par}')/folders/add(url='{quote(pn,safe='')}')", headers=h, timeout=30)
+              site_rel     = web.properties['ServerRelativeUrl']
+              folder_path  = f"{site_rel}/{DOC_LIB}/{SP_FOLDER}/{PROJECT_NAME}"
+              print(f"📁 Target: {folder_path}")
 
-          def upload(token, path):
-              sz   = os.path.getsize(path); fn = os.path.basename(path)
-              print(f"📤 Uploading {fn} ({sz/1024/1024:.1f} MB)")
-              h    = {'Authorization': f'Bearer {token}', 'Accept': 'application/json;odata=nometadata'}
-              frel = f"{SITE_PATH}/{DOC_LIB}/{FOLDER_SUFFIX}"
-              api  = f"https://{SITE_HOST}{SITE_PATH}/_api/web"
-              furl = f"{api}/GetFolderByServerRelativeUrl('{frel}')"
-              if sz <= 250*1024*1024:
-                  with open(path,'rb') as f:
-                      r = requests.post(f"{furl}/Files/add(url='{fn}',overwrite=true)",
-                                        headers={**h,'Content-Type':'application/octet-stream'}, data=f, timeout=600)
-                  if r.status_code not in [200,201]: print(f"❌ [{r.status_code}]: {r.text[:200]}"); sys.exit(1)
+              # Ensure project subfolder exists
+              try:
+                  chk = ctx.web.get_folder_by_server_relative_url(folder_path)
+                  ctx.load(chk)
+                  ctx.execute_query()
+                  print("✅ Folder already exists")
+              except Exception:
+                  parent = ctx.web.get_folder_by_server_relative_url(
+                      f"{site_rel}/{DOC_LIB}/{SP_FOLDER}"
+                  )
+                  parent.folders.add(PROJECT_NAME).execute_query()
+                  print(f"✅ Folder created: {PROJECT_NAME}")
+
+              folder    = ctx.web.get_folder_by_server_relative_url(folder_path)
+              file_name = os.path.basename(ARTIFACT)
+              file_size = os.path.getsize(ARTIFACT)
+              print(f"📤 Uploading {file_name} ({file_size/1024/1024:.1f} MB)...")
+
+              def on_progress(offset):
+                  pct = (offset / file_size) * 100
+                  print(f"  {offset/1024/1024:.0f} MB / {file_size/1024/1024:.0f} MB ({pct:.1f}%)")
+
+              if file_size <= 250 * 1024 * 1024:
+                  with open(ARTIFACT, 'rb') as f:
+                      folder.upload_file(file_name, f.read()).execute_query()
               else:
-                  uid = str(uuid.uuid4())
-                  from urllib.parse import quote as urlquote
-                  file_srvrel = urlquote(f"{frel}/{fn}", safe='/:@!$&\'()*+,;=')
-                  with open(path,'rb') as f:
-                      offset = 0
-                      while True:
-                          chunk = f.read(CHUNK_SIZE)
-                          if not chunk: break
-                          first = offset == 0; last = offset+len(chunk) >= sz
-                          if first:   url = f"{furl}/Files/add(url='{fn}',overwrite=true)/startUpload(uploadId=guid'{uid}')"
-                          elif last:  url = f"{api}/GetFileByServerRelativeUrl('{file_srvrel}')/finishUpload(uploadId=guid'{uid}',fileOffset={offset})"
-                          else:       url = f"{api}/GetFileByServerRelativeUrl('{file_srvrel}')/continueUpload(uploadId=guid'{uid}',fileOffset={offset})"
-                          r = requests.post(url, headers={**h,'Content-Type':'application/octet-stream'}, data=chunk, timeout=300)
-                          if r.status_code not in ([200,201] if last else [200,201,202]):
-                              print(f"❌ Chunk [{r.status_code}]: {r.text[:200]}"); sys.exit(1)
-                          offset += len(chunk)
-              print(f"✅ Uploaded: {fn}")
+                  with open(ARTIFACT, 'rb') as f:
+                      folder.files.create_upload_session(
+                          f, CHUNK_SIZE, on_progress
+                      ).execute_query()
 
-          t = get_token(); ensure_folder(t); upload(t, ARTIFACT_FILE); print("✅ Done!")
+              print(f"✅ Upload successful: {file_name}")
+              print("✅ Done!")
+          finally:
+              os.unlink(cert_path)
           EOFPY
           python3 /tmp/upload_sp.py
 
@@ -270,7 +258,7 @@ jobs:
           echo "📊 Compressed: $(du -sh ${{ steps.vars.outputs.ARTIFACT_NAME }}.tar.gz | cut -f1)"
 
       - name: Install Python dependencies
-        run: pip install requests PyJWT cryptography
+        run: pip install Office365-REST-Python-Client
 
       - name: Upload artifact to SharePoint
         env:
@@ -283,85 +271,73 @@ jobs:
           SHAREPOINT_FOLDER: ${{ secrets.SHAREPOINT_FOLDER }}
         run: |
           cat > /tmp/upload_sp.py << 'EOFPY'
-          import os, sys, time, uuid, hashlib, requests, jwt, base64, binascii
-          from cryptography.hazmat.primitives import serialization
-          from cryptography.hazmat.backends import default_backend
+          import os, sys, tempfile
+          from office365.sharepoint.client_context import ClientContext
 
-          TENANT_ID      = os.environ['AZURE_TENANT_ID']
-          CLIENT_ID      = os.environ['AZURE_CLIENT_ID']
-          THUMBPRINT     = os.environ['AZURE_CERT_THUMBPRINT']
-          PK_PEM         = os.environ['AZURE_PRIVATE_KEY']
-          SITE_URL       = os.environ['SHAREPOINT_SITE_URL'].rstrip('/')
-          FOLDER_SUFFIX  = f"{os.environ['SHAREPOINT_FOLDER']}/{os.environ.get('PROJECT_NAME','')}"
-          ARTIFACT_FILE  = os.environ['ARTIFACT_FILE']
-          SITE_HOST      = SITE_URL.split('/')[2]
-          SITE_PATH      = '/' + '/'.join(SITE_URL.split('/')[3:])
-          DOC_LIB        = 'Documentos compartidos'
-          CHUNK_SIZE     = 10 * 1024 * 1024
+          TENANT_ID    = os.environ['AZURE_TENANT_ID']
+          CLIENT_ID    = os.environ['AZURE_CLIENT_ID']
+          THUMBPRINT   = os.environ['AZURE_CERT_THUMBPRINT']
+          PK_PEM       = os.environ['AZURE_PRIVATE_KEY']
+          SITE_URL     = os.environ['SHAREPOINT_SITE_URL'].rstrip('/')
+          SP_FOLDER    = os.environ['SHAREPOINT_FOLDER']
+          PROJECT_NAME = os.environ.get('PROJECT_NAME', '')
+          ARTIFACT     = os.environ['ARTIFACT_FILE']
+          DOC_LIB      = 'Documentos compartidos'
+          CHUNK_SIZE   = 10 * 1024 * 1024
 
-          def normalize_pem(s):
-              return '\n'.join(l.strip() for l in s.strip().splitlines())
+          # office365 lib requires a PEM file path, write secret to temp file
+          pem_fd, cert_path = tempfile.mkstemp(suffix='.pem')
+          with os.fdopen(pem_fd, 'w') as pf:
+              pf.write('\n'.join(l.strip() for l in PK_PEM.strip().splitlines()))
 
-          def get_token():
-              now = int(time.time())
-              payload = {'aud': f'https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token',
-                         'exp': now+600, 'iss': CLIENT_ID,
-                         'jti': hashlib.sha256(os.urandom(32)).hexdigest(),
-                         'nbf': now, 'sub': CLIENT_ID}
-              tb  = binascii.unhexlify(THUMBPRINT.replace(':','').replace(' ',''))
-              x5t = base64.urlsafe_b64encode(tb).rstrip(b'=').decode('ascii')
-              pk  = serialization.load_pem_private_key(normalize_pem(PK_PEM).encode(), password=None, backend=default_backend())
-              ca  = jwt.encode(payload, pk, algorithm='RS256', headers={'x5t': x5t})
-              r   = requests.post(f'https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token',
-                                  data={'client_id': CLIENT_ID,
-                                        'client_assertion_type': 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
-                                        'client_assertion': ca,
-                                        'scope': f'https://{SITE_HOST}/.default',
-                                        'grant_type': 'client_credentials'}, timeout=30)
-              if r.status_code != 200: print(f"❌ Token [{r.status_code}]: {r.text[:200]}"); sys.exit(1)
-              return r.json()['access_token']
+          try:
+              print("🔐 Authenticating via office365-rest-python-client...")
+              ctx = ClientContext(SITE_URL).with_client_certificate(
+                  TENANT_ID, CLIENT_ID, THUMBPRINT, cert_path
+              )
+              web = ctx.web
+              ctx.load(web)
+              ctx.execute_query()
 
-          def ensure_folder(token):
-              from urllib.parse import quote
-              api = f"https://{SITE_HOST}{SITE_PATH}/_api/web"
-              h   = {'Authorization': f'Bearer {token}', 'Accept': 'application/json;odata=nometadata'}
-              sp  = os.environ['SHAREPOINT_FOLDER']; pn = os.environ.get('PROJECT_NAME','')
-              par = f"{SITE_PATH}/{DOC_LIB}/{sp}"; tgt = f"{par}/{pn}"
-              if requests.get(f"{api}/GetFolderByServerRelativeUrl('{tgt}')", headers=h, timeout=30).status_code == 200: return
-              requests.post(f"{api}/GetFolderByServerRelativeUrl('{par}')/folders/add(url='{quote(pn,safe='')}')", headers=h, timeout=30)
+              site_rel     = web.properties['ServerRelativeUrl']
+              folder_path  = f"{site_rel}/{DOC_LIB}/{SP_FOLDER}/{PROJECT_NAME}"
+              print(f"📁 Target: {folder_path}")
 
-          def upload(token, path):
-              sz   = os.path.getsize(path); fn = os.path.basename(path)
-              print(f"📤 Uploading {fn} ({sz/1024/1024:.1f} MB)")
-              h    = {'Authorization': f'Bearer {token}', 'Accept': 'application/json;odata=nometadata'}
-              frel = f"{SITE_PATH}/{DOC_LIB}/{FOLDER_SUFFIX}"
-              api  = f"https://{SITE_HOST}{SITE_PATH}/_api/web"
-              furl = f"{api}/GetFolderByServerRelativeUrl('{frel}')"
-              if sz <= 250*1024*1024:
-                  with open(path,'rb') as f:
-                      r = requests.post(f"{furl}/Files/add(url='{fn}',overwrite=true)",
-                                        headers={**h,'Content-Type':'application/octet-stream'}, data=f, timeout=600)
-                  if r.status_code not in [200,201]: print(f"❌ [{r.status_code}]: {r.text[:200]}"); sys.exit(1)
+              # Ensure project subfolder exists
+              try:
+                  chk = ctx.web.get_folder_by_server_relative_url(folder_path)
+                  ctx.load(chk)
+                  ctx.execute_query()
+                  print("✅ Folder already exists")
+              except Exception:
+                  parent = ctx.web.get_folder_by_server_relative_url(
+                      f"{site_rel}/{DOC_LIB}/{SP_FOLDER}"
+                  )
+                  parent.folders.add(PROJECT_NAME).execute_query()
+                  print(f"✅ Folder created: {PROJECT_NAME}")
+
+              folder    = ctx.web.get_folder_by_server_relative_url(folder_path)
+              file_name = os.path.basename(ARTIFACT)
+              file_size = os.path.getsize(ARTIFACT)
+              print(f"📤 Uploading {file_name} ({file_size/1024/1024:.1f} MB)...")
+
+              def on_progress(offset):
+                  pct = (offset / file_size) * 100
+                  print(f"  {offset/1024/1024:.0f} MB / {file_size/1024/1024:.0f} MB ({pct:.1f}%)")
+
+              if file_size <= 250 * 1024 * 1024:
+                  with open(ARTIFACT, 'rb') as f:
+                      folder.upload_file(file_name, f.read()).execute_query()
               else:
-                  uid = str(uuid.uuid4())
-                  from urllib.parse import quote as urlquote
-                  file_srvrel = urlquote(f"{frel}/{fn}", safe='/:@!$&\'()*+,;=')
-                  with open(path,'rb') as f:
-                      offset = 0
-                      while True:
-                          chunk = f.read(CHUNK_SIZE)
-                          if not chunk: break
-                          first = offset == 0; last = offset+len(chunk) >= sz
-                          if first:   url = f"{furl}/Files/add(url='{fn}',overwrite=true)/startUpload(uploadId=guid'{uid}')"
-                          elif last:  url = f"{api}/GetFileByServerRelativeUrl('{file_srvrel}')/finishUpload(uploadId=guid'{uid}',fileOffset={offset})"
-                          else:       url = f"{api}/GetFileByServerRelativeUrl('{file_srvrel}')/continueUpload(uploadId=guid'{uid}',fileOffset={offset})"
-                          r = requests.post(url, headers={**h,'Content-Type':'application/octet-stream'}, data=chunk, timeout=300)
-                          if r.status_code not in ([200,201] if last else [200,201,202]):
-                              print(f"❌ Chunk [{r.status_code}]: {r.text[:200]}"); sys.exit(1)
-                          offset += len(chunk)
-              print(f"✅ Uploaded: {fn}")
+                  with open(ARTIFACT, 'rb') as f:
+                      folder.files.create_upload_session(
+                          f, CHUNK_SIZE, on_progress
+                      ).execute_query()
 
-          t = get_token(); ensure_folder(t); upload(t, ARTIFACT_FILE); print("✅ Done!")
+              print(f"✅ Upload successful: {file_name}")
+              print("✅ Done!")
+          finally:
+              os.unlink(cert_path)
           EOFPY
           python3 /tmp/upload_sp.py
 
