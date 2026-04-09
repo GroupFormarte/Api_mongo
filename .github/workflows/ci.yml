@@ -27,7 +27,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run linter
         run: npm run lint || echo "⚠️ No lint configured"
@@ -163,15 +163,17 @@ jobs:
                   if r.status_code not in [200,201]: print(f"❌ [{r.status_code}]: {r.text[:200]}"); sys.exit(1)
               else:
                   uid = str(uuid.uuid4())
+                  from urllib.parse import quote as urlquote
+                  file_srvrel = urlquote(f"{frel}/{fn}", safe='/:@!$&\'()*+,;=')
                   with open(path,'rb') as f:
                       offset = 0
                       while True:
                           chunk = f.read(CHUNK_SIZE)
                           if not chunk: break
                           first = offset == 0; last = offset+len(chunk) >= sz
-                          if first:   url = f"{furl}/Files/add(url='{fn}',overwrite=true)/StartUpload(uploadId=guid'{uid}')"
-                          elif last:  url = f"{furl}/GetFileByUrl('{fn}')/FinishUpload(uploadId=guid'{uid}',fileOffset={offset})"
-                          else:       url = f"{furl}/GetFileByUrl('{fn}')/ContinueUpload(uploadId=guid'{uid}',fileOffset={offset})"
+                          if first:   url = f"{furl}/Files/add(url='{fn}',overwrite=true)/startUpload(uploadId=guid'{uid}')"
+                          elif last:  url = f"{api}/GetFileByServerRelativeUrl('{file_srvrel}')/finishUpload(uploadId=guid'{uid}',fileOffset={offset})"
+                          else:       url = f"{api}/GetFileByServerRelativeUrl('{file_srvrel}')/continueUpload(uploadId=guid'{uid}',fileOffset={offset})"
                           r = requests.post(url, headers={**h,'Content-Type':'application/octet-stream'}, data=chunk, timeout=300)
                           if r.status_code not in ([200,201] if last else [200,201,202]):
                               print(f"❌ Chunk [{r.status_code}]: {r.text[:200]}"); sys.exit(1)
@@ -342,15 +344,17 @@ jobs:
                   if r.status_code not in [200,201]: print(f"❌ [{r.status_code}]: {r.text[:200]}"); sys.exit(1)
               else:
                   uid = str(uuid.uuid4())
+                  from urllib.parse import quote as urlquote
+                  file_srvrel = urlquote(f"{frel}/{fn}", safe='/:@!$&\'()*+,;=')
                   with open(path,'rb') as f:
                       offset = 0
                       while True:
                           chunk = f.read(CHUNK_SIZE)
                           if not chunk: break
                           first = offset == 0; last = offset+len(chunk) >= sz
-                          if first:   url = f"{furl}/Files/add(url='{fn}',overwrite=true)/StartUpload(uploadId=guid'{uid}')"
-                          elif last:  url = f"{furl}/GetFileByUrl('{fn}')/FinishUpload(uploadId=guid'{uid}',fileOffset={offset})"
-                          else:       url = f"{furl}/GetFileByUrl('{fn}')/ContinueUpload(uploadId=guid'{uid}',fileOffset={offset})"
+                          if first:   url = f"{furl}/Files/add(url='{fn}',overwrite=true)/startUpload(uploadId=guid'{uid}')"
+                          elif last:  url = f"{api}/GetFileByServerRelativeUrl('{file_srvrel}')/finishUpload(uploadId=guid'{uid}',fileOffset={offset})"
+                          else:       url = f"{api}/GetFileByServerRelativeUrl('{file_srvrel}')/continueUpload(uploadId=guid'{uid}',fileOffset={offset})"
                           r = requests.post(url, headers={**h,'Content-Type':'application/octet-stream'}, data=chunk, timeout=300)
                           if r.status_code not in ([200,201] if last else [200,201,202]):
                               print(f"❌ Chunk [{r.status_code}]: {r.text[:200]}"); sys.exit(1)
