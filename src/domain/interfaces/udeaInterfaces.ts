@@ -43,6 +43,7 @@ export interface ResultadoUdea {
   areas: PuntajeAreaUdea[];
   puntajeGlobal: number;
   position: number;
+  totalAnswered: number;
   fechaCalculo: Date;
 }
 

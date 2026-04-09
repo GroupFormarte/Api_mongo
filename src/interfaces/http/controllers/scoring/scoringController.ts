@@ -159,37 +159,36 @@ async function recalibrarContadores(db: mongoose.mongo.Db): Promise<number> {
 }
 
 export async function calcularUdea(req: Request, res: Response) {
-    const { idSimulacro, students } = req.body;
+  const { idSimulacro, students } = req.body;
 
-    if (!idSimulacro || !Array.isArray(students) || students.length === 0) {
-        return res.status(400).json({
-            ok: false,
-            error: "Se requieren: idSimulacro (string) y students (array)",
-        });
+  if (!idSimulacro || !Array.isArray(students) || students.length === 0) {
+    return res.status(400).json({
+      ok: false,
+      error: "Se requieren: idSimulacro (string) y students (array)",
+    });
+  }
+
+  try {
+    const db = getDb();
+    const service = new UdeaScoringService(db);
+    const resultado = await service.calcularGrupo(students, idSimulacro);
+    
+    const resultados: Record<string, any> = {};
+    for (const r of resultado.resultados) {
+      resultados[r.idEstudiante] = {
+        position: r.position,
+        score: r.puntajeGlobal,
+        totalStudents: resultado.resultados.length,
+        correctAnswers: r.areas.reduce((s: number, a: any) => s + a.correctas, 0),
+        incorrectAnswers: r.areas.reduce((s: number, a: any) => s + a.incorrectas, 0),
+        totalAnswered: r.totalAnswered,
+        areas: r.areas,
+      };
     }
 
-    try {
-        const db = getDb();
-        const service = new UdeaScoringService(db);
-        const resultado = await service.calcularGrupo(students, idSimulacro);
-
-        // Convertir lista → mapa { idEstudiante: result } igual que Saber
-        const resultados: Record<string, any> = {};
-        for (const r of resultado.resultados) {
-            resultados[r.idEstudiante] = {
-                position: r.position,
-                score: r.puntajeGlobal,
-                totalStudents: resultado.resultados.length,
-                correctAnswers: r.areas.reduce((s: number, a: any) => s + a.correctas, 0),
-                incorrectAnswers: r.areas.reduce((s: number, a: any) => s + a.incorrectas, 0),
-                totalAnswered: r.areas.reduce((s: number, a: any) => s + a.total, 0),
-                areas: r.areas,
-            };
-        }
-
-        return res.status(200).json({ ok: true, resultados });
-    } catch (err: unknown) {
-        const mensaje = err instanceof Error ? err.message : "Error desconocido";
-        return res.status(500).json({ ok: false, error: mensaje });
-    }
+    return res.status(200).json({ ok: true, resultados });
+  } catch (err: unknown) {
+    const mensaje = err instanceof Error ? err.message : "Error desconocido";
+    return res.status(500).json({ ok: false, error: mensaje });
+  }
 }
