@@ -74,7 +74,7 @@ export class UdeaScoringService {
       const exam = exams.find((e) => e.idSimulacro === idSimulacro);
       if (!exam) continue;
 
-      const subjects = exam.subjects ?? [];
+      const subjects = exam.subjects ?? exam.materias ?? [];
       if (!subjects.length) continue;
 
       const areasMap = new Map<
@@ -94,8 +94,7 @@ export class UdeaScoringService {
         if (existing) {
           // Si hay dos subjects del mismo área, acumular
           existing.correctas += subject.correctAnswers ?? 0;
-          existing.total +=
-            (subject.correctAnswers ?? 0) + (subject.incorrectAnswers ?? 0);
+          existing.total += (subject.correctAnswers ?? 0) + (subject.incorrectAnswers ?? 0);
         } else {
           areasMap.set(areaKey, {
             nombre: subject.name ?? "",
@@ -112,7 +111,8 @@ export class UdeaScoringService {
     }
 
     // 2. Separar presentados / no presentados
-    // Flutter envía presento=true/false basado en sessionResponses (igual que el cálculo local)
+    // Para UdeA, si ya hay respuestas acumuladas por área (>0), cuenta como presentado
+    // aunque `presento` venga false.
     const presentadosIds = new Set<string>(
       students
         .filter((s) => s.presento === true)
@@ -127,7 +127,12 @@ export class UdeaScoringService {
     const noPresentados = new Set<string>();
 
     for (const [id, areas] of porEstudiante) {
-      if (presentadosIds.has(id)) {
+      const totalRespondido = [...areas.values()].reduce(
+        (s, a) => s + a.total,
+        0,
+      );
+
+      if (presentadosIds.has(id) || totalRespondido > 0) {
         presentados.set(id, areas);
       } else {
         noPresentados.add(id);
@@ -172,6 +177,8 @@ export class UdeaScoringService {
       const areasDetalle: PuntajeAreaUdea[] = [];
       let suma = 0;
       let count = 0;
+      let totalAnswered = 0;
+      let totalCorrectas = 0;
 
       for (const [areaKey, stats] of areas) {
         const est = estadisticas.get(areaKey) ?? { media: 0, sd: 1 };
@@ -194,19 +201,27 @@ export class UdeaScoringService {
 
         suma += puntaje;
         count++;
+        totalAnswered += stats.total;
+        totalCorrectas += stats.correctas;
       }
 
-      const globalEstudiante =
+      const sinAciertos = totalAnswered === 0 || totalCorrectas === 0;
+      const areasFinales = sinAciertos
+        ? areasDetalle.map((a) => ({ ...a, puntaje: 0 }))
+        : areasDetalle;
+      const globalCalculado =
         count > 0 ? parseFloat((suma / count).toFixed(1)) : 0;
+      const globalEstudiante = sinAciertos ? 0 : globalCalculado;
       console.log(
         `[UdeA] ${nombrePorId.get(idEstudiante) ?? idEstudiante} → global: ${globalEstudiante}`,
       );
 
       resultados.push({
         idEstudiante,
-        areas: areasDetalle,
+        areas: areasFinales,
         puntajeGlobal: globalEstudiante,
         position: 0, // se calcula abajo
+        totalAnswered,
         fechaCalculo,
       });
     }
@@ -230,6 +245,7 @@ export class UdeaScoringService {
         areas: areasVacias,
         puntajeGlobal: 0,
         position: 0,
+        totalAnswered: 0,
         fechaCalculo,
       });
     }
@@ -261,6 +277,7 @@ export class UdeaScoringService {
           $set: {
             scoreUdea: r.puntajeGlobal,
             positionUdea: r.position,
+            totalAnsweredUdea: r.totalAnswered,
             lastCalculoUdea: r.fechaCalculo,
             areasUdea: r.areas,
           },
@@ -274,6 +291,7 @@ export class UdeaScoringService {
             $set: {
               scoreUdea: r.puntajeGlobal,
               positionUdea: r.position,
+              totalAnsweredUdea: r.totalAnswered,
               lastCalculoUdea: r.fechaCalculo,
               areasUdea: r.areas,
             },
