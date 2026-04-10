@@ -6,5 +6,5 @@ tsconfig.json
 uploads/
 docker-compose.yml
 Dockerfile
-build
+build/
 dist
