@@ -232,4 +232,3 @@ jobs:
             echo "tail -50 /var/log/deploy-${{ env.PROJECT_NAME }}.log" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
-          

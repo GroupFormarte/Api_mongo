@@ -372,4 +372,3 @@ jobs:
           echo "| **Branch** | \`dev\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Target** | dev-mongo.plataformapodium.com |" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit** | \`${{ steps.vars.outputs.GIT_SHA_SHORT }}\` |" >> $GITHUB_STEP_SUMMARY
-          
