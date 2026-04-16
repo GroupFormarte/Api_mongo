@@ -1,0 +1,235 @@
+name: Continuous Deployment — Deploy to ARES
+
+on:
+  workflow_run:
+    workflows: ["Continuous Integration — Build & Publish"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      artifact_name:
+        description: 'Artifact name a desplegar (ej: app-formarte-co-master-sha-abc1234-20260409-120000.tar.gz)'
+        required: true
+        type: string
+      environment:
+        description: 'Ambiente destino'
+        required: true
+        type: choice
+        options:
+          - master
+          - dev
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  # ========== PRODUCCION: master → app.formarte.co ==========
+  deploy-prod:
+    name: Deploy PROD (app.formarte.co)
+    runs-on: [self-hosted, Linux, X64, ARES]
+    env:
+      PROJECT_NAME: app.formarte.co
+      DEPLOYMENT_ROOT: /var/www/app.formarte.co
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'master') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master')
+
+    steps:
+      - name: Precheck tools
+        run: |
+          command -v jq    >/dev/null || { echo "❌ jq no está instalado"; exit 1; }
+          command -v unzip >/dev/null || { echo "❌ unzip no está instalado"; exit 1; }
+          echo "✅ jq $(jq --version), unzip: OK"
+
+      - name: Determine artifact to deploy
+        id: artifact
+        env:
+          MANUAL_ARTIFACT: ${{ github.event.inputs.artifact_name }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          rm -rf /tmp/ci-metadata
+          if [ -n "${MANUAL_ARTIFACT}" ]; then
+            echo "📦 Artifact manual: ${MANUAL_ARTIFACT}"
+            echo "ARTIFACT_NAME=${MANUAL_ARTIFACT}" >> $GITHUB_OUTPUT
+          else
+            echo "🔍 Obteniendo artifact del CI run ${CI_RUN_ID}..."
+            HTTP_CODE=$(curl -s -o /tmp/artifacts.json -w "%{http_code}" --max-time 30 \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${REPO}/actions/runs/${CI_RUN_ID}/artifacts")
+            [ "${HTTP_CODE}" != "200" ] && { echo "❌ API HTTP ${HTTP_CODE}"; cat /tmp/artifacts.json; exit 1; }
+            DOWNLOAD_URL=$(jq -r '.artifacts[] | select(.name == "deployment-metadata") | .archive_download_url' /tmp/artifacts.json)
+            [ -z "${DOWNLOAD_URL}" ] || [ "${DOWNLOAD_URL}" = "null" ] && { echo "❌ deployment-metadata no encontrado"; exit 1; }
+            HTTP_CODE=$(curl -sL -o /tmp/metadata.zip -w "%{http_code}" --max-time 60 \
+              -H "Authorization: Bearer ${GH_TOKEN}" "${DOWNLOAD_URL}")
+            [ "${HTTP_CODE}" != "200" ] && { echo "❌ Descarga fallida HTTP ${HTTP_CODE}"; exit 1; }
+            mkdir -p /tmp/ci-metadata
+            unzip -o /tmp/metadata.zip -d /tmp/ci-metadata/ > /dev/null
+            rm -f /tmp/metadata.zip
+            ARTIFACT_NAME=$(jq -r '.artifact' /tmp/ci-metadata/deployment-metadata.json | xargs)
+            [ -z "${ARTIFACT_NAME}" ] || [ "${ARTIFACT_NAME}" = "null" ] && { echo "❌ No se pudo extraer artifact name"; exit 1; }
+            echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+            echo "✅ Artifact a desplegar: ${ARTIFACT_NAME}"
+          fi
+
+      - name: Execute deployment
+        env:
+          ARTIFACT_NAME: ${{ steps.artifact.outputs.ARTIFACT_NAME }}
+        run: |
+          echo "========================================================"
+          echo "🚀 Desplegando en ARES → app.formarte.co"
+          echo "========================================================"
+          echo "Project:  ${{ env.PROJECT_NAME }}"
+          echo "Artifact: ${ARTIFACT_NAME}"
+          echo "Branch:   ${{ github.event.workflow_run.head_branch || github.ref_name }}"
+          echo "Actor:    ${{ github.event.workflow_run.triggering_actor.login || github.actor }}"
+          echo "========================================================"
+          sudo /opt/deploy/deploy-generic.sh "${{ env.PROJECT_NAME }}" "${ARTIFACT_NAME}"
+
+      - name: Verify deployment
+        run: |
+          echo "✅ Verificando servicios en ${{ env.DEPLOYMENT_ROOT }}..."
+          cd ${{ env.DEPLOYMENT_ROOT }}
+          RUNNING=$(docker compose ps --status running --format json 2>/dev/null | jq -s 'length')
+          TOTAL=$(docker compose ps --format json 2>/dev/null | jq -s 'length')
+          echo "Servicios corriendo: ${RUNNING}/${TOTAL}"
+          docker compose ps
+          if [ "${RUNNING}" -eq 0 ] || [ "${RUNNING}" -lt "${TOTAL}" ]; then
+            echo "❌ No todos los servicios están corriendo"
+            docker compose logs --tail=50
+            exit 1
+          fi
+          echo "✅ Todos los servicios corriendo correctamente"
+
+      - name: Summary
+        if: always()
+        env:
+          ARTIFACT_NAME: ${{ steps.artifact.outputs.ARTIFACT_NAME }}
+        run: |
+          STATUS="${{ job.status }}"
+          echo "## 🚀 Deploy PROD — ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "| Campo | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Proyecto** | \`${{ env.PROJECT_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Artifact** | \`${ARTIFACT_NAME}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.event.workflow_run.head_branch || github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Runner** | ARES self-hosted |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Estado** | ${STATUS} |" >> $GITHUB_STEP_SUMMARY
+          if [ "${STATUS}" = "success" ]; then
+            echo "✅ Desplegado exitosamente en https://app.formarte.co" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Deploy falló. Revisar logs:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "tail -50 /var/log/deploy-${{ env.PROJECT_NAME }}.log" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ========== DESARROLLO: dev → dev-mongo.plataformapodium.com ==========
+  deploy-dev:
+    name: Deploy DEV (dev-mongo.plataformapodium.com)
+    runs-on: [self-hosted, Linux, X64, ARES]
+    env:
+      PROJECT_NAME: dev-mongo.plataformapodium.com
+      DEPLOYMENT_ROOT: /var/www/dev-mongo.plataformapodium.com
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'dev')
+
+    steps:
+      - name: Precheck tools
+        run: |
+          command -v jq    >/dev/null || { echo "❌ jq no está instalado"; exit 1; }
+          command -v unzip >/dev/null || { echo "❌ unzip no está instalado"; exit 1; }
+          echo "✅ jq $(jq --version), unzip: OK"
+
+      - name: Determine artifact to deploy
+        id: artifact
+        env:
+          MANUAL_ARTIFACT: ${{ github.event.inputs.artifact_name }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          rm -rf /tmp/ci-metadata
+          if [ -n "${MANUAL_ARTIFACT}" ]; then
+            echo "📦 Artifact manual: ${MANUAL_ARTIFACT}"
+            echo "ARTIFACT_NAME=${MANUAL_ARTIFACT}" >> $GITHUB_OUTPUT
+          else
+            echo "🔍 Obteniendo artifact del CI run ${CI_RUN_ID}..."
+            HTTP_CODE=$(curl -s -o /tmp/artifacts.json -w "%{http_code}" --max-time 30 \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${REPO}/actions/runs/${CI_RUN_ID}/artifacts")
+            [ "${HTTP_CODE}" != "200" ] && { echo "❌ API HTTP ${HTTP_CODE}"; cat /tmp/artifacts.json; exit 1; }
+            DOWNLOAD_URL=$(jq -r '.artifacts[] | select(.name == "deployment-metadata") | .archive_download_url' /tmp/artifacts.json)
+            [ -z "${DOWNLOAD_URL}" ] || [ "${DOWNLOAD_URL}" = "null" ] && { echo "❌ deployment-metadata no encontrado"; exit 1; }
+            HTTP_CODE=$(curl -sL -o /tmp/metadata.zip -w "%{http_code}" --max-time 60 \
+              -H "Authorization: Bearer ${GH_TOKEN}" "${DOWNLOAD_URL}")
+            [ "${HTTP_CODE}" != "200" ] && { echo "❌ Descarga fallida HTTP ${HTTP_CODE}"; exit 1; }
+            mkdir -p /tmp/ci-metadata
+            unzip -o /tmp/metadata.zip -d /tmp/ci-metadata/ > /dev/null
+            rm -f /tmp/metadata.zip
+            ARTIFACT_NAME=$(jq -r '.artifact' /tmp/ci-metadata/deployment-metadata.json | xargs)
+            [ -z "${ARTIFACT_NAME}" ] || [ "${ARTIFACT_NAME}" = "null" ] && { echo "❌ No se pudo extraer artifact name"; exit 1; }
+            echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+            echo "✅ Artifact a desplegar: ${ARTIFACT_NAME}"
+          fi
+
+      - name: Execute deployment
+        env:
+          ARTIFACT_NAME: ${{ steps.artifact.outputs.ARTIFACT_NAME }}
+        run: |
+          echo "========================================================"
+          echo "🚀 Desplegando en ARES → dev-mongo.plataformapodium.com"
+          echo "========================================================"
+          echo "Project:  ${{ env.PROJECT_NAME }}"
+          echo "Artifact: ${ARTIFACT_NAME}"
+          echo "Branch:   ${{ github.event.workflow_run.head_branch || github.ref_name }}"
+          echo "Actor:    ${{ github.event.workflow_run.triggering_actor.login || github.actor }}"
+          echo "========================================================"
+          sudo /opt/deploy/deploy-generic.sh "${{ env.PROJECT_NAME }}" "${ARTIFACT_NAME}"
+
+      - name: Verify deployment
+        run: |
+          echo "✅ Verificando servicios en ${{ env.DEPLOYMENT_ROOT }}..."
+          cd ${{ env.DEPLOYMENT_ROOT }}
+          RUNNING=$(docker compose ps --status running --format json 2>/dev/null | jq -s 'length')
+          TOTAL=$(docker compose ps --format json 2>/dev/null | jq -s 'length')
+          echo "Servicios corriendo: ${RUNNING}/${TOTAL}"
+          docker compose ps
+          if [ "${RUNNING}" -eq 0 ] || [ "${RUNNING}" -lt "${TOTAL}" ]; then
+            echo "❌ No todos los servicios están corriendo"
+            docker compose logs --tail=50
+            exit 1
+          fi
+          echo "✅ Todos los servicios corriendo correctamente"
+
+      - name: Summary
+        if: always()
+        env:
+          ARTIFACT_NAME: ${{ steps.artifact.outputs.ARTIFACT_NAME }}
+        run: |
+          STATUS="${{ job.status }}"
+          echo "## 🚀 Deploy DEV — ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "| Campo | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Proyecto** | \`${{ env.PROJECT_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Artifact** | \`${ARTIFACT_NAME}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.event.workflow_run.head_branch || github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Runner** | ARES self-hosted |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Estado** | ${STATUS} |" >> $GITHUB_STEP_SUMMARY
+          if [ "${STATUS}" = "success" ]; then
+            echo "✅ Desplegado exitosamente en https://dev-mongo.plataformapodium.com" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Deploy falló. Revisar logs:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "tail -50 /var/log/deploy-${{ env.PROJECT_NAME }}.log" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          

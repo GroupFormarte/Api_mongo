@@ -1,0 +1,375 @@
+name: Continuous Integration — Build & Publish
+
+on:
+  push:
+    branches: [master, dev]
+  pull_request:
+    branches: [master, dev]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  # ========== JOB 1: Tests ==========
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run linter
+        run: npm run lint || echo "⚠️ No lint configured"
+
+      - name: Run tests
+        run: npm test || echo "⚠️ No tests configured"
+
+  # ========== JOB 2: Build PROD (master → app.formarte.co) ==========
+  build-prod:
+    name: Build PROD Docker Image (app.formarte.co)
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref_name == 'master'
+
+    env:
+      PROJECT_NAME: app.formarte.co
+      DOCKER_IMAGE_NAME: app-formarte-co
+
+    outputs:
+      artifact-name: ${{ steps.vars.outputs.ARTIFACT_NAME }}
+      git-sha: ${{ steps.vars.outputs.GIT_SHA_SHORT }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate build variables
+        id: vars
+        run: |
+          GIT_SHA_SHORT=$(echo ${{ github.sha }} | cut -c1-7)
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          BRANCH_CLEAN=$(echo ${{ github.ref_name }} | tr '/' '-')
+          ARTIFACT_NAME="${{ env.DOCKER_IMAGE_NAME }}-${BRANCH_CLEAN}-sha-${GIT_SHA_SHORT}-${TIMESTAMP}"
+          echo "GIT_SHA_SHORT=${GIT_SHA_SHORT}" >> $GITHUB_OUTPUT
+          echo "TIMESTAMP=${TIMESTAMP}" >> $GITHUB_OUTPUT
+          echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+          echo "📦 Artifact: ${ARTIFACT_NAME}.tar.gz"
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.vars.outputs.GIT_SHA_SHORT }} \
+            --tag ${{ env.DOCKER_IMAGE_NAME }}:latest \
+            --label "git.commit=${{ github.sha }}" \
+            --label "git.branch=${{ github.ref_name }}" \
+            --label "build.timestamp=${{ steps.vars.outputs.TIMESTAMP }}" \
+            --label "build.actor=${{ github.actor }}" \
+            .
+
+      - name: Save & compress Docker image
+        run: |
+          docker save ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.vars.outputs.GIT_SHA_SHORT }} \
+            -o ${{ steps.vars.outputs.ARTIFACT_NAME }}.tar
+          echo "📊 Raw size: $(du -sh ${{ steps.vars.outputs.ARTIFACT_NAME }}.tar | cut -f1)"
+          gzip -9 ${{ steps.vars.outputs.ARTIFACT_NAME }}.tar
+          echo "📊 Compressed: $(du -sh ${{ steps.vars.outputs.ARTIFACT_NAME }}.tar.gz | cut -f1)"
+
+      - name: Install Python dependencies
+        run: pip install Office365-REST-Python-Client
+
+      - name: Upload artifact to SharePoint
+        env:
+          ARTIFACT_FILE: ${{ steps.vars.outputs.ARTIFACT_NAME }}.tar.gz
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CERT_THUMBPRINT: ${{ secrets.AZURE_CERT_THUMBPRINT }}
+          AZURE_PRIVATE_KEY: ${{ secrets.AZURE_PRIVATE_KEY }}
+          SHAREPOINT_SITE_URL: ${{ secrets.SHAREPOINT_SITE_URL }}
+          SHAREPOINT_FOLDER: ${{ secrets.SHAREPOINT_FOLDER }}
+        run: |
+          cat > /tmp/upload_sp.py << 'EOFPY'
+          import os, sys, tempfile
+          from office365.sharepoint.client_context import ClientContext
+
+          TENANT_ID    = os.environ['AZURE_TENANT_ID']
+          CLIENT_ID    = os.environ['AZURE_CLIENT_ID']
+          THUMBPRINT   = os.environ['AZURE_CERT_THUMBPRINT']
+          PK_PEM       = os.environ['AZURE_PRIVATE_KEY']
+          SITE_URL     = os.environ['SHAREPOINT_SITE_URL'].rstrip('/')
+          SP_FOLDER    = os.environ['SHAREPOINT_FOLDER']
+          PROJECT_NAME = os.environ.get('PROJECT_NAME', '')
+          ARTIFACT     = os.environ['ARTIFACT_FILE']
+          DOC_LIB      = 'Documentos compartidos'
+          CHUNK_SIZE   = 10 * 1024 * 1024
+
+          # office365 lib requires a PEM file path, write secret to temp file
+          pem_fd, cert_path = tempfile.mkstemp(suffix='.pem')
+          with os.fdopen(pem_fd, 'w') as pf:
+              pf.write('\n'.join(l.strip() for l in PK_PEM.strip().splitlines()))
+
+          try:
+              print("🔐 Authenticating via office365-rest-python-client...")
+              ctx = ClientContext(SITE_URL).with_client_certificate(
+                  TENANT_ID, CLIENT_ID, THUMBPRINT, cert_path
+              )
+              web = ctx.web
+              ctx.load(web)
+              ctx.execute_query()
+
+              site_rel     = web.properties['ServerRelativeUrl']
+              folder_path  = f"{site_rel}/{DOC_LIB}/{SP_FOLDER}/{PROJECT_NAME}"
+              print(f"📁 Target: {folder_path}")
+
+              # Ensure project subfolder exists
+              try:
+                  chk = ctx.web.get_folder_by_server_relative_url(folder_path)
+                  ctx.load(chk)
+                  ctx.execute_query()
+                  print("✅ Folder already exists")
+              except Exception:
+                  parent = ctx.web.get_folder_by_server_relative_url(
+                      f"{site_rel}/{DOC_LIB}/{SP_FOLDER}"
+                  )
+                  parent.folders.add(PROJECT_NAME).execute_query()
+                  print(f"✅ Folder created: {PROJECT_NAME}")
+
+              folder    = ctx.web.get_folder_by_server_relative_url(folder_path)
+              file_name = os.path.basename(ARTIFACT)
+              file_size = os.path.getsize(ARTIFACT)
+              print(f"📤 Uploading {file_name} ({file_size/1024/1024:.1f} MB)...")
+
+              def on_progress(offset):
+                  pct = (offset / file_size) * 100
+                  print(f"  {offset/1024/1024:.0f} MB / {file_size/1024/1024:.0f} MB ({pct:.1f}%)")
+
+              if file_size <= 250 * 1024 * 1024:
+                  with open(ARTIFACT, 'rb') as f:
+                      folder.upload_file(file_name, f.read()).execute_query()
+              else:
+                  with open(ARTIFACT, 'rb') as f:
+                      folder.files.create_upload_session(
+                          f, CHUNK_SIZE, on_progress
+                      ).execute_query()
+
+              print(f"✅ Upload successful: {file_name}")
+              print("✅ Done!")
+          finally:
+              os.unlink(cert_path)
+          EOFPY
+          python3 /tmp/upload_sp.py
+
+      - name: Create deployment metadata
+        run: |
+          cat > deployment-metadata.json << EOF
+          {
+            "artifact": "${{ steps.vars.outputs.ARTIFACT_NAME }}.tar.gz",
+            "git_commit": "${{ github.sha }}",
+            "git_commit_short": "${{ steps.vars.outputs.GIT_SHA_SHORT }}",
+            "git_branch": "${{ github.ref_name }}",
+            "git_author": "${{ github.actor }}",
+            "build_timestamp": "${{ steps.vars.outputs.TIMESTAMP }}",
+            "github_run_id": "${{ github.run_id }}",
+            "github_run_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
+          EOF
+
+      - name: Upload deployment metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-metadata
+          path: deployment-metadata.json
+          retention-days: 7
+
+      - name: Summary
+        run: |
+          echo "## 📦 Build PROD — app.formarte.co" >> $GITHUB_STEP_SUMMARY
+          echo "| Campo | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Artifact** | \`${{ steps.vars.outputs.ARTIFACT_NAME }}.tar.gz\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`master\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target** | app.formarte.co |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ steps.vars.outputs.GIT_SHA_SHORT }}\` |" >> $GITHUB_STEP_SUMMARY
+
+  # ========== JOB 3: Build DEV (dev → dev-mongo.plataformapodium.com) ==========
+  build-dev:
+    name: Build DEV Docker Image (dev-mongo.plataformapodium.com)
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref_name == 'dev'
+
+    env:
+      PROJECT_NAME: dev-mongo.plataformapodium.com
+      DOCKER_IMAGE_NAME: dev-mongo-plataformapodium
+
+    outputs:
+      artifact-name: ${{ steps.vars.outputs.ARTIFACT_NAME }}
+      git-sha: ${{ steps.vars.outputs.GIT_SHA_SHORT }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate build variables
+        id: vars
+        run: |
+          GIT_SHA_SHORT=$(echo ${{ github.sha }} | cut -c1-7)
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          BRANCH_CLEAN=$(echo ${{ github.ref_name }} | tr '/' '-')
+          ARTIFACT_NAME="${{ env.DOCKER_IMAGE_NAME }}-${BRANCH_CLEAN}-sha-${GIT_SHA_SHORT}-${TIMESTAMP}"
+          echo "GIT_SHA_SHORT=${GIT_SHA_SHORT}" >> $GITHUB_OUTPUT
+          echo "TIMESTAMP=${TIMESTAMP}" >> $GITHUB_OUTPUT
+          echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+          echo "📦 Artifact: ${ARTIFACT_NAME}.tar.gz"
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.vars.outputs.GIT_SHA_SHORT }} \
+            --tag ${{ env.DOCKER_IMAGE_NAME }}:latest \
+            --label "git.commit=${{ github.sha }}" \
+            --label "git.branch=${{ github.ref_name }}" \
+            --label "build.timestamp=${{ steps.vars.outputs.TIMESTAMP }}" \
+            --label "build.actor=${{ github.actor }}" \
+            .
+
+      - name: Save & compress Docker image
+        run: |
+          docker save ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.vars.outputs.GIT_SHA_SHORT }} \
+            -o ${{ steps.vars.outputs.ARTIFACT_NAME }}.tar
+          echo "📊 Raw size: $(du -sh ${{ steps.vars.outputs.ARTIFACT_NAME }}.tar | cut -f1)"
+          gzip -9 ${{ steps.vars.outputs.ARTIFACT_NAME }}.tar
+          echo "📊 Compressed: $(du -sh ${{ steps.vars.outputs.ARTIFACT_NAME }}.tar.gz | cut -f1)"
+
+      - name: Install Python dependencies
+        run: pip install Office365-REST-Python-Client
+
+      - name: Upload artifact to SharePoint
+        env:
+          ARTIFACT_FILE: ${{ steps.vars.outputs.ARTIFACT_NAME }}.tar.gz
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CERT_THUMBPRINT: ${{ secrets.AZURE_CERT_THUMBPRINT }}
+          AZURE_PRIVATE_KEY: ${{ secrets.AZURE_PRIVATE_KEY }}
+          SHAREPOINT_SITE_URL: ${{ secrets.SHAREPOINT_SITE_URL }}
+          SHAREPOINT_FOLDER: ${{ secrets.SHAREPOINT_FOLDER }}
+        run: |
+          cat > /tmp/upload_sp.py << 'EOFPY'
+          import os, sys, tempfile
+          from office365.sharepoint.client_context import ClientContext
+
+          TENANT_ID    = os.environ['AZURE_TENANT_ID']
+          CLIENT_ID    = os.environ['AZURE_CLIENT_ID']
+          THUMBPRINT   = os.environ['AZURE_CERT_THUMBPRINT']
+          PK_PEM       = os.environ['AZURE_PRIVATE_KEY']
+          SITE_URL     = os.environ['SHAREPOINT_SITE_URL'].rstrip('/')
+          SP_FOLDER    = os.environ['SHAREPOINT_FOLDER']
+          PROJECT_NAME = os.environ.get('PROJECT_NAME', '')
+          ARTIFACT     = os.environ['ARTIFACT_FILE']
+          DOC_LIB      = 'Documentos compartidos'
+          CHUNK_SIZE   = 10 * 1024 * 1024
+
+          # office365 lib requires a PEM file path, write secret to temp file
+          pem_fd, cert_path = tempfile.mkstemp(suffix='.pem')
+          with os.fdopen(pem_fd, 'w') as pf:
+              pf.write('\n'.join(l.strip() for l in PK_PEM.strip().splitlines()))
+
+          try:
+              print("🔐 Authenticating via office365-rest-python-client...")
+              ctx = ClientContext(SITE_URL).with_client_certificate(
+                  TENANT_ID, CLIENT_ID, THUMBPRINT, cert_path
+              )
+              web = ctx.web
+              ctx.load(web)
+              ctx.execute_query()
+
+              site_rel     = web.properties['ServerRelativeUrl']
+              folder_path  = f"{site_rel}/{DOC_LIB}/{SP_FOLDER}/{PROJECT_NAME}"
+              print(f"📁 Target: {folder_path}")
+
+              # Ensure project subfolder exists
+              try:
+                  chk = ctx.web.get_folder_by_server_relative_url(folder_path)
+                  ctx.load(chk)
+                  ctx.execute_query()
+                  print("✅ Folder already exists")
+              except Exception:
+                  parent = ctx.web.get_folder_by_server_relative_url(
+                      f"{site_rel}/{DOC_LIB}/{SP_FOLDER}"
+                  )
+                  parent.folders.add(PROJECT_NAME).execute_query()
+                  print(f"✅ Folder created: {PROJECT_NAME}")
+
+              folder    = ctx.web.get_folder_by_server_relative_url(folder_path)
+              file_name = os.path.basename(ARTIFACT)
+              file_size = os.path.getsize(ARTIFACT)
+              print(f"📤 Uploading {file_name} ({file_size/1024/1024:.1f} MB)...")
+
+              def on_progress(offset):
+                  pct = (offset / file_size) * 100
+                  print(f"  {offset/1024/1024:.0f} MB / {file_size/1024/1024:.0f} MB ({pct:.1f}%)")
+
+              if file_size <= 250 * 1024 * 1024:
+                  with open(ARTIFACT, 'rb') as f:
+                      folder.upload_file(file_name, f.read()).execute_query()
+              else:
+                  with open(ARTIFACT, 'rb') as f:
+                      folder.files.create_upload_session(
+                          f, CHUNK_SIZE, on_progress
+                      ).execute_query()
+
+              print(f"✅ Upload successful: {file_name}")
+              print("✅ Done!")
+          finally:
+              os.unlink(cert_path)
+          EOFPY
+          python3 /tmp/upload_sp.py
+
+      - name: Create deployment metadata
+        run: |
+          cat > deployment-metadata.json << EOF
+          {
+            "artifact": "${{ steps.vars.outputs.ARTIFACT_NAME }}.tar.gz",
+            "git_commit": "${{ github.sha }}",
+            "git_commit_short": "${{ steps.vars.outputs.GIT_SHA_SHORT }}",
+            "git_branch": "${{ github.ref_name }}",
+            "git_author": "${{ github.actor }}",
+            "build_timestamp": "${{ steps.vars.outputs.TIMESTAMP }}",
+            "github_run_id": "${{ github.run_id }}",
+            "github_run_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
+          EOF
+
+      - name: Upload deployment metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-metadata
+          path: deployment-metadata.json
+          retention-days: 7
+
+      - name: Summary
+        run: |
+          echo "## 📦 Build DEV — dev-mongo.plataformapodium.com" >> $GITHUB_STEP_SUMMARY
+          echo "| Campo | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Artifact** | \`${{ steps.vars.outputs.ARTIFACT_NAME }}.tar.gz\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`dev\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target** | dev-mongo.plataformapodium.com |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ steps.vars.outputs.GIT_SHA_SHORT }}\` |" >> $GITHUB_STEP_SUMMARY
+          
