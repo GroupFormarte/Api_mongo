@@ -63,6 +63,11 @@ export class DynamicRepository {
     return await model.findOneAndUpdate(query, { $set: data }, { new: true });
   }
 
+  async updateOneWithOperators(collectionName: string, query: any, update: any, schema: any = {}) {
+  const model = this.getModel(collectionName, schema);
+  return await model.updateOne(query, update);
+}
+
   async deleteById(collectionName: string, id: string, schema: any = {}): Promise<any | null> {
     const model = this.getModel(collectionName, schema);
     return await model.findByIdAndDelete(id);

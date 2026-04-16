@@ -114,13 +114,24 @@ router.post('/remove-examen', asyncHandler(async (req: Request, res: Response) =
     return ApiResponse.badRequest(res, 'Se requiere el id_simulacro');
   }
 
-  const result = await studentService.removeExamenAsignado(ids_estudiantes, id_simulacro, classroomId);
+  const result = await studentService.removeExamenAsignado(
+    ids_estudiantes,
+    id_simulacro,
+    classroomId,
+  );
 
-  return ApiResponse.bulk(res, {
-    successful: result.updated,
-    failed: result.notFound.map((id: string) => ({ id, reason: 'Student not found' })),
-    total: ids_estudiantes.length
-  }, 'Examen removed from students');
+  return ApiResponse.bulk(
+    res,
+    {
+      successful: result.updated,
+      failed: result.notFound.map((id: string) => ({
+        id,
+        reason: 'Student not found',
+      })),
+      total: ids_estudiantes.length,
+    },
+    'Examen removed from students',
+  );
 }));
 
 // Get student by ID
