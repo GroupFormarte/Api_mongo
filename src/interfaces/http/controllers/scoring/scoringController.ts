@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { SemiIrtScoringService } from '../../../../application/services/SemiIrtScoringService';
+import { SemiIrtScoringService } from '../../../../application/services/IcfesScoringService';
 import { UnalScoringService } from '../../../../application/services/UnalScoringService';
 import { UdeaScoringService } from '../../../../application/services/UdeaScoringService';
 

@@ -194,10 +194,10 @@ export class UnalScoringService {
         updateOne: {
           filter: { id_estudiante: pf.idEstudiante },
           update: {
-            // $set: { scoreUnal: scoreFinal, lastCalculoUnal: ahora, areasUnal: areasFinal },
+            // $set: { scoreSimulacro: scoreFinal, lastCalculoUnal: ahora, areasSimulacro: areasFinal },
             $set: {
-              'examenes_asignados.$[elem].scoreUnal': scoreFinal,
-              'examenes_asignados.$[elem].areasUnal': areasFinal,
+              'examenes_asignados.$[elem].scoreSimulacro': scoreFinal,
+              'examenes_asignados.$[elem].areasSimulacro': areasFinal,
             },
             arrayFilters: [{ 'elem.id_simulacro': idSimulacro }]
           },
@@ -208,9 +208,9 @@ export class UnalScoringService {
         updateOne: {
           filter: { id_student: pf.idEstudiante },
           update: {
-            // $set: { scoreUnal: scoreFinal, lastCalculoUnal: ahora },
+            // $set: { scoreSimulacro: scoreFinal, lastCalculoUnal: ahora },
             $set: {
-              'examenes_asignados.$[elem].scoreUnal': scoreFinal,
+              'examenes_asignados.$[elem].scoreSimulacro': scoreFinal,
             },
             arrayFilters: [{ 'elem.id_simulacro': idSimulacro }]
           },
