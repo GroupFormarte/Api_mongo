@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { AreaSaber11, ContadorPregunta, PuntajeArea, ResultadoSemiIRT } from '../../domain/interfaces/saberInterfaces';
 import { mapAsignaturaToAreaIcfes } from './mappers/icfesSubjectMapper';
+import { buildExamAssignmentUpdate, icfesAreaNameMap } from './helpers/examAssignmentUpdate';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CAPA 1 — Curva de conversión ICFES
@@ -10,13 +11,13 @@ import { mapAsignaturaToAreaIcfes } from './mappers/icfesSubjectMapper';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CURVA_ICFES: Array<{ pct: number; pts: number }> = [
-  { pct: 0.00, pts: 0   },
-  { pct: 0.25, pts: 40  },
-  { pct: 0.35, pts: 50  },
-  { pct: 0.45, pts: 60  },
-  { pct: 0.55, pts: 70  },
-  { pct: 0.70, pts: 80  },
-  { pct: 0.85, pts: 90  },
+  { pct: 0.00, pts: 0 },
+  { pct: 0.25, pts: 40 },
+  { pct: 0.35, pts: 50 },
+  { pct: 0.45, pts: 60 },
+  { pct: 0.55, pts: 70 },
+  { pct: 0.70, pts: 80 },
+  { pct: 0.85, pts: 90 },
   { pct: 1.00, pts: 100 },
 ];
 
@@ -95,11 +96,11 @@ function calcularPeso(contador: ContadorPregunta | undefined): number {
 }
 
 function calcularPuntajeSaber11(areas: Map<AreaSaber11, number>): number {
-  const lc  = areas.get('Lectura Crítica')      ?? 0;
-  const ma  = areas.get('Matemáticas')           ?? 0;
-  const cn  = areas.get('Ciencias Naturales')    ?? 0;
-  const cs  = areas.get('Sociales y Ciudadanas') ?? 0;
-  const ing = areas.get('Inglés')                ?? 0;
+  const lc = areas.get('Lectura Crítica') ?? 0;
+  const ma = areas.get('Matemáticas') ?? 0;
+  const cn = areas.get('Ciencias Naturales') ?? 0;
+  const cs = areas.get('Sociales y Ciudadanas') ?? 0;
+  const ing = areas.get('Inglés') ?? 0;
 
   const ig = (3 * lc + 3 * ma + 3 * cn + 3 * cs + ing) / 13;
   return parseFloat(Math.min(500, Math.max(0, ig * 5)).toFixed(1));
@@ -118,9 +119,9 @@ function calcularIRTDesdeRespuestas(
   respuestas: Array<{ asignatura: string; respuesta: boolean; idPregunta: string }>,
   contadorMap: Map<string, ContadorPregunta>,
 ): { areaNormalizada: Map<AreaSaber11, number>; areasDetalle: PuntajeArea[] } {
-  const areaPesoTotal    = new Map<AreaSaber11, number>();
+  const areaPesoTotal = new Map<AreaSaber11, number>();
   const areaPesoCorrecto = new Map<AreaSaber11, number>();
-  const areaStats        = new Map<AreaSaber11, { correctas: number; incorrectas: number }>();
+  const areaStats = new Map<AreaSaber11, { correctas: number; incorrectas: number }>();
 
   for (const resp of respuestas) {
     const area = mapAsignaturaToAreaIcfes(resp.asignatura);
@@ -141,8 +142,8 @@ function calcularIRTDesdeRespuestas(
   const areasDetalle: PuntajeArea[] = [];
 
   for (const [area, pesoTotal] of areaPesoTotal) {
-    const pesoCorrecto  = areaPesoCorrecto.get(area) ?? 0;
-    const pctAciertos   = pesoTotal > 0 ? pesoCorrecto / pesoTotal : 0;
+    const pesoCorrecto = areaPesoCorrecto.get(area) ?? 0;
+    const pctAciertos = pesoTotal > 0 ? pesoCorrecto / pesoTotal : 0;
 
     // Capa 1: convertir porcentaje ponderado a escala ICFES real
     const puntaje = aplicarCurvaIcfes(pctAciertos);
@@ -153,9 +154,9 @@ function calcularIRTDesdeRespuestas(
     areasDetalle.push({
       area,
       puntaje,
-      correctas:   stats.correctas,
+      correctas: stats.correctas,
       incorrectas: stats.incorrectas,
-      total:       stats.correctas + stats.incorrectas,
+      total: stats.correctas + stats.incorrectas,
     });
   }
 
@@ -170,34 +171,33 @@ function calcularIRTDesdeRespuestas(
 function calcularDesdeSubjectsFallback(
   subjects: Array<{ name: string; correctAnswers: number; incorrectAnswers: number }>,
 ): { areaNormalizada: Map<AreaSaber11, number>; areasDetalle: PuntajeArea[]; totalCorrectas: number; totalIncorrectas: number } {
-  const areaNormalizada  = new Map<AreaSaber11, number>();
+  const areaNormalizada = new Map<AreaSaber11, number>();
   const areasDetalle: PuntajeArea[] = [];
-  let totalCorrectas    = 0;
-  let totalIncorrectas  = 0;
+  let totalCorrectas = 0;
+  let totalIncorrectas = 0;
 
   for (const subject of subjects) {
     const area = mapAsignaturaToAreaIcfes(subject.name);
     if (!area) continue;
 
-    const correctas   = subject.correctAnswers   ?? 0;
-    const incorrectas = subject.incorrectAnswers  ?? 0;
-    const total       = correctas + incorrectas;
+    const correctas = subject.correctAnswers ?? 0;
+    const incorrectas = subject.incorrectAnswers ?? 0;
+    const total = correctas + incorrectas;
     if (total === 0) continue;
 
     // Sin datos IRT, usamos porcentaje simple — pero igual pasamos por la curva
     const pctAciertos = correctas / total;
-    const puntaje     = aplicarCurvaIcfes(pctAciertos);
+    const puntaje = aplicarCurvaIcfes(pctAciertos);
 
     areaNormalizada.set(area, puntaje);
     areasDetalle.push({ area, puntaje, correctas, incorrectas, total });
 
-    totalCorrectas   += correctas;
+    totalCorrectas += correctas;
     totalIncorrectas += incorrectas;
   }
 
   return { areaNormalizada, areasDetalle, totalCorrectas, totalIncorrectas };
 }
-
 
 export class SemiIrtScoringService {
   private db: mongoose.mongo.Db;
@@ -231,7 +231,7 @@ export class SemiIrtScoringService {
     return {
       score: puntajeGlobal, position, totalStudents,
       correctAnswers: totalCorrectas, incorrectAnswers: totalIncorrectas,
-      totalAnswered:  totalCorrectas + totalIncorrectas,
+      totalAnswered: totalCorrectas + totalIncorrectas,
       areas: areasDetalle,
     };
   }
@@ -264,7 +264,7 @@ export class SemiIrtScoringService {
 
     // ── 2. Cargar pesos IRT de todas las preguntas involucradas ───────────────
     const idPreguntas = [...new Set(todasRespuestas.map((r: any) => r.idPregunta as string))];
-    const objectIds   = idPreguntas
+    const objectIds = idPreguntas
       .filter(id => mongoose.Types.ObjectId.isValid(id))
       .map(id => new mongoose.Types.ObjectId(id));
 
@@ -287,7 +287,7 @@ export class SemiIrtScoringService {
       if (!respuestasPorEstudiante.has(id)) respuestasPorEstudiante.set(id, []);
       respuestasPorEstudiante.get(id)!.push({
         asignatura: r.asignatura,
-        respuesta:  r.respuesta,
+        respuesta: r.respuesta,
         idPregunta: r.idPregunta,
       });
     }
@@ -304,11 +304,11 @@ export class SemiIrtScoringService {
       if (respuestas && respuestas.length > 0) {
         const { areaNormalizada, areasDetalle } = calcularIRTDesdeRespuestas(respuestas, contadorMap);
         puntajes.push({
-          idEstudiante:    est.idEstudiante,
-          score:           calcularPuntajeSaber11(areaNormalizada),
-          correctAnswers:  areasDetalle.reduce((s, a) => s + a.correctas, 0),
+          idEstudiante: est.idEstudiante,
+          score: calcularPuntajeSaber11(areaNormalizada),
+          correctAnswers: areasDetalle.reduce((s, a) => s + a.correctas, 0),
           incorrectAnswers: areasDetalle.reduce((s, a) => s + a.incorrectas, 0),
-          areas:           areasDetalle,
+          areas: areasDetalle,
         });
       } else {
         console.warn(`[SemiIRT] Fallback subjects para estudiante=${est.idEstudiante} — sin respuestas en BD`);
@@ -316,55 +316,67 @@ export class SemiIrtScoringService {
           calcularDesdeSubjectsFallback(est.subjects);
 
         puntajes.push({
-          idEstudiante:     est.idEstudiante,
-          score:            calcularPuntajeSaber11(areaNormalizada),
-          correctAnswers:   totalCorrectas,
+          idEstudiante: est.idEstudiante,
+          score: calcularPuntajeSaber11(areaNormalizada),
+          correctAnswers: totalCorrectas,
           incorrectAnswers: totalIncorrectas,
-          areas:            areasDetalle,
+          areas: areasDetalle,
         });
       }
     }
 
     // ── 5. Posiciones relativas dentro del grupo ────
     const scoresOrdenados = [...puntajes].sort((a, b) => b.score - a.score);
-    const totalStudents   = puntajes.length;
-    const ahora           = new Date();
-
+    const totalStudents = puntajes.length;
+    
     // ── 6. Construir respuesta + bulk writes ───
     const resultados: Record<string, any> = {};
-    const bulkStudents:    any[] = [];
+    const bulkStudents: any[] = [];
     const bulkEstudiantes: any[] = [];
 
     for (const p of puntajes) {
       const position = scoresOrdenados.findIndex(s => s.idEstudiante === p.idEstudiante) + 1;
 
       resultados[p.idEstudiante] = {
-        score:            p.score,
+        score: p.score,
         position,
         totalStudents,
-        correctAnswers:   p.correctAnswers,
+        correctAnswers: p.correctAnswers,
         incorrectAnswers: p.incorrectAnswers,
-        totalAnswered:    p.correctAnswers + p.incorrectAnswers,
-        areas:            p.areas,
+        totalAnswered: p.correctAnswers + p.incorrectAnswers,
+        areas: p.areas,
       };
+
+      const { $set, arrayFilters } = buildExamAssignmentUpdate(
+        p.score,
+        p.areas,
+        idSimulacro,
+        icfesAreaNameMap,
+      );
 
       bulkStudents.push({
         updateOne: {
           filter: { id_estudiante: p.idEstudiante },
-          update: { $set: { scoreSimulacro: p.score, lastCalculo: ahora, areasSimulacro: p.areas } },
+          update: {
+            $set,
+          },
+          arrayFilters,
         },
       });
 
       bulkEstudiantes.push({
         updateOne: {
           filter: { id_student: p.idEstudiante },
-          update: { $set: { scoreSimulacro: p.score, lastCalculo: ahora } },
+          update: {
+            $set,
+          },
+          arrayFilters,
         },
       });
     }
 
     await Promise.all([
-      this.db.collection('students').bulkWrite(bulkStudents,    { ordered: false }),
+      this.db.collection('students').bulkWrite(bulkStudents, { ordered: false }),
       this.db.collection('Estudiantes').bulkWrite(bulkEstudiantes, { ordered: false }),
     ]);
 
@@ -390,12 +402,12 @@ export class SemiIrtScoringService {
       ).toArray();
 
     const scores = new Map<string, number>();
-    for (const s of studentsConScore)  scores.set(s.id_estudiante, s.scoreSimulacro);
+    for (const s of studentsConScore) scores.set(s.id_estudiante, s.scoreSimulacro);
     for (const s of estudiantesConScore) scores.set(s.id_student, s.scoreSimulacro);
     scores.set(idEstudiante, puntajeGlobal);
 
     const todosLosScores = Array.from(scores.values()).sort((a, b) => b - a);
-    const position       = todosLosScores.indexOf(puntajeGlobal) + 1;
+    const position = todosLosScores.indexOf(puntajeGlobal) + 1;
 
     return { position, totalStudents: scores.size };
   }
