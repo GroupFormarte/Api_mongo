@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { ResponseHandler } from '../../../../shared/utils/responseHandler';
+import { getRequestBaseUrl } from '../../../../shared/utils/requestUrl';
 
 export const uploadImage = (req: Request, res: Response) => {
   try {
@@ -30,7 +31,7 @@ export const uploadImage = (req: Request, res: Response) => {
     const filepath = path.join(uploadsDir, filename);
     fs.writeFileSync(filepath, imageBuffer);
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = getRequestBaseUrl(req);
     const imageUrl = `/uploads/${filename}`;
     const fullUrl = `${baseUrl}${imageUrl}`;
 
@@ -74,7 +75,7 @@ export const uploadMultipleImages = (req: Request, res: Response) => {
       const filepath = path.join(uploadsDir, filename);
       fs.writeFileSync(filepath, imageBuffer);
 
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const baseUrl = getRequestBaseUrl(req);
       const imageUrl = `/uploads/${filename}`;
       return {
         url: imageUrl,
