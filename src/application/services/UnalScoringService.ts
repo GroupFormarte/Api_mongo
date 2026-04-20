@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { AreaUnal, ResultadoUnal, PuntajeAreaUnal } from '../../domain/interfaces/unalInterface';
 import { mapAsignaturaToAreaUnal } from './mappers/unalSubjectMapper';
+import { buildExamAssignmentUpdate, unalAreaNameMap } from './helpers/examAssignmentUpdate';
 
 
 function calcularEstadisticas(valores: number[]): { media: number; sd: number } {
@@ -162,8 +163,6 @@ export class UnalScoringService {
 
     const scoresOrdenados = [...puntajesFinales].sort((a, b) => b.score - a.score);
     const totalStudents = puntajesFinales.length;
-    const ahora = new Date();
-
     // ── Paso 5: Construir respuesta y guardar en MongoDB ─────────────────────
     const resultados: Record<string, ResultadoUnal> = {};
     const bulkStudents: any[] = [];
@@ -190,17 +189,20 @@ export class UnalScoringService {
         areas: areasFinal,
       };
 
+      const { $set, arrayFilters } = buildExamAssignmentUpdate(
+        scoreFinal,
+        areasFinal,
+        idSimulacro,
+        unalAreaNameMap,
+      );
+
       bulkStudents.push({
         updateOne: {
           filter: { id_estudiante: pf.idEstudiante },
           update: {
-            // $set: { scoreSimulacro: scoreFinal, lastCalculoUnal: ahora, areasSimulacro: areasFinal },
-            $set: {
-              'examenes_asignados.$[elem].scoreSimulacro': scoreFinal,
-              'examenes_asignados.$[elem].areasSimulacro': areasFinal,
-            },
-            arrayFilters: [{ 'elem.id_simulacro': idSimulacro }]
+            $set,
           },
+          arrayFilters,
         }
       });
 
@@ -208,12 +210,9 @@ export class UnalScoringService {
         updateOne: {
           filter: { id_student: pf.idEstudiante },
           update: {
-            // $set: { scoreSimulacro: scoreFinal, lastCalculoUnal: ahora },
-            $set: {
-              'examenes_asignados.$[elem].scoreSimulacro': scoreFinal,
-            },
-            arrayFilters: [{ 'elem.id_simulacro': idSimulacro }]
+            $set,
           },
+          arrayFilters,
         }
       });
     }

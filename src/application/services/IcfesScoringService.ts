@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { AreaSaber11, ContadorPregunta, PuntajeArea, ResultadoSemiIRT } from '../../domain/interfaces/saberInterfaces';
 import { mapAsignaturaToAreaIcfes } from './mappers/icfesSubjectMapper';
+import { buildExamAssignmentUpdate, icfesAreaNameMap } from './helpers/examAssignmentUpdate';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CAPA 1 — Curva de conversión ICFES
@@ -198,7 +199,6 @@ function calcularDesdeSubjectsFallback(
   return { areaNormalizada, areasDetalle, totalCorrectas, totalIncorrectas };
 }
 
-
 export class SemiIrtScoringService {
   private db: mongoose.mongo.Db;
 
@@ -328,8 +328,7 @@ export class SemiIrtScoringService {
     // ── 5. Posiciones relativas dentro del grupo ────
     const scoresOrdenados = [...puntajes].sort((a, b) => b.score - a.score);
     const totalStudents = puntajes.length;
-    const ahora = new Date();
-
+    
     // ── 6. Construir respuesta + bulk writes ───
     const resultados: Record<string, any> = {};
     const bulkStudents: any[] = [];
@@ -348,17 +347,20 @@ export class SemiIrtScoringService {
         areas: p.areas,
       };
 
+      const { $set, arrayFilters } = buildExamAssignmentUpdate(
+        p.score,
+        p.areas,
+        idSimulacro,
+        icfesAreaNameMap,
+      );
+
       bulkStudents.push({
         updateOne: {
           filter: { id_estudiante: p.idEstudiante },
           update: {
-            // $set: { scoreSimulacro: p.score, lastCalculo: ahora, areasSimulacro: p.areas } },
-            $set: {
-              'examenes_asignados.$[elem].scoreSimulacro': p.score,
-              'examenes_asignados.$[elem].areasSimulacro': p.areas,
-            },
-            arrayFilters: [{ 'elem.id_simulacro': idSimulacro }]
-          }
+            $set,
+          },
+          arrayFilters,
         },
       });
 
@@ -366,12 +368,9 @@ export class SemiIrtScoringService {
         updateOne: {
           filter: { id_student: p.idEstudiante },
           update: {
-            // $set: { scoreSimulacro: p.score, lastCalculo: ahora },
-            $set: {
-              'examenes_asignados.$[elem].scoreSimulacro': p.score,
-            },
-            arrayFilters: [{ 'elem.id_simulacro': idSimulacro }]
+            $set,
           },
+          arrayFilters,
         },
       });
     }
