@@ -78,7 +78,7 @@ export class UnalScoringService {
       let incorrectasTotal = 0;
 
       for (const subject of est.subjects) {
-      
+
         const area = mapAsignaturaToAreaUnal(subject.name);
         if (!area) continue;
 
@@ -193,19 +193,32 @@ export class UnalScoringService {
       bulkStudents.push({
         updateOne: {
           filter: { id_estudiante: pf.idEstudiante },
-          update: { $set: { scoreUnal: scoreFinal, lastCalculoUnal: ahora, areasUnal: areasFinal } },
+          update: {
+            // $set: { scoreUnal: scoreFinal, lastCalculoUnal: ahora, areasUnal: areasFinal },
+            $set: {
+              'examenes_asignados.$[elem].scoreUnal': scoreFinal,
+              'examenes_asignados.$[elem].areasUnal': areasFinal,
+            },
+            arrayFilters: [{ 'elem.id_simulacro': idSimulacro }]
+          },
         }
       });
 
       bulkEstudiantes.push({
         updateOne: {
           filter: { id_student: pf.idEstudiante },
-          update: { $set: { scoreUnal: scoreFinal, lastCalculoUnal: ahora } },
+          update: {
+            // $set: { scoreUnal: scoreFinal, lastCalculoUnal: ahora },
+            $set: {
+              'examenes_asignados.$[elem].scoreUnal': scoreFinal,
+            },
+            arrayFilters: [{ 'elem.id_simulacro': idSimulacro }]
+          },
         }
       });
     }
 
-    
+
 
     await Promise.all([
       this.db.collection('students').bulkWrite(bulkStudents, { ordered: false }),
