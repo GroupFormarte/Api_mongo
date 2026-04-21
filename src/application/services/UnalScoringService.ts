@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import { AreaUnal, ResultadoUnal, PuntajeAreaUnal } from '../../domain/interfaces/unal-interfaces';
 import { mapAsignaturaToAreaUnal } from '../mappers/unalSubjectMapper';
+import { buildExamAssignmentUpdate, unalAreaNameMap } from './helpers/examAssignmentUpdate';
+
 
 function calcularEstadisticas(valores: number[]): { media: number; sd: number } {
   if (valores.length === 0) return { media: 0, sd: 1 };
@@ -77,7 +79,7 @@ export class UnalScoringService {
       let incorrectasTotal = 0;
 
       for (const subject of est.subjects) {
-      
+
         const area = mapAsignaturaToAreaUnal(subject.name);
         if (!area) continue;
 
@@ -161,8 +163,6 @@ export class UnalScoringService {
 
     const scoresOrdenados = [...puntajesFinales].sort((a, b) => b.score - a.score);
     const totalStudents = puntajesFinales.length;
-    const ahora = new Date();
-
     // ── Paso 5: Construir respuesta y guardar en MongoDB ─────────────────────
     const resultados: Record<string, ResultadoUnal> = {};
     const bulkStudents: any[] = [];
@@ -189,22 +189,35 @@ export class UnalScoringService {
         areas: areasFinal,
       };
 
+      const { $set, arrayFilters } = buildExamAssignmentUpdate(
+        scoreFinal,
+        areasFinal,
+        idSimulacro,
+        unalAreaNameMap,
+      );
+
       bulkStudents.push({
         updateOne: {
           filter: { id_estudiante: pf.idEstudiante },
-          update: { $set: { scoreUnal: scoreFinal, lastCalculoUnal: ahora, areasUnal: areasFinal } },
+          update: {
+            $set,
+          },
+          arrayFilters,
         }
       });
 
       bulkEstudiantes.push({
         updateOne: {
           filter: { id_student: pf.idEstudiante },
-          update: { $set: { scoreUnal: scoreFinal, lastCalculoUnal: ahora } },
+          update: {
+            $set,
+          },
+          arrayFilters,
         }
       });
     }
 
-    
+
 
     await Promise.all([
       this.db.collection('students').bulkWrite(bulkStudents, { ordered: false }),

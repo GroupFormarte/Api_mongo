@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { SemiIrtScoringService } from '../../../application/services/SemiIrtScoringService';
-import { UnalScoringService } from '../../../application/services/UnalScoringService';
+import { SemiIrtScoringService } from '../../../application/services/IcfesScoringService';
 import { UdeaScoringService } from '../../../application/services/UdeaScoringService';
+import { UnalScoringService } from '../../../application/services/UnalScoringService';
+
 
 function getDb(): mongoose.mongo.Db {
     const db = mongoose.connection.db;
@@ -181,7 +182,7 @@ export async function calcularUdea(req: Request, res: Response) {
                 totalStudents: resultado.resultados.length,
                 correctAnswers: r.areas.reduce((s: number, a: any) => s + a.correctas, 0),
                 incorrectAnswers: r.areas.reduce((s: number, a: any) => s + a.incorrectas, 0),
-                totalAnswered: r.areas.reduce((s: number, a: any) => s + a.total, 0),
+                totalAnswered: r.totalAnswered,
                 areas: r.areas,
             };
         }

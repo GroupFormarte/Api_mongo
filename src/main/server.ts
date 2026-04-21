@@ -17,6 +17,10 @@ import { errorHandler, notFoundHandler } from '../shared/middleware/errorHandler
 const app = express();
 const port = env.port;
 
+// Required when the app runs behind a reverse proxy (nginx, ALB, etc.)
+// so req.protocol reflects the original client protocol (https/http).
+app.set('trust proxy', 1);
+
 // Initialize database connection
 const dbConnection = DatabaseConnection.getInstance();
 

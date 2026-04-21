@@ -5,7 +5,9 @@ import path from "path";
 import { PDFDocument } from "pdf-lib";
 import fs from "fs";
 import crypto from "crypto";
+import { getRequestBaseUrl } from "../../../shared/utils/requestUrl";
 import { pushToWSClients } from "../../websocket/sse.service";
+
 
 export const generateReport = async (req: Request, res: Response) => {
   const students = req.body.listado;
@@ -71,7 +73,7 @@ export const generateReport = async (req: Request, res: Response) => {
   //     "Content-Disposition": "attachment; filename=reportes.pdf",
   //   });
   //   res.send(Buffer.from(finalPdf));
-  const baseUrl = `${req.protocol}://${req.get("host")}`;
+  const baseUrl = getRequestBaseUrl(req);
   const fileUrl = `${baseUrl}/uploads/${tempId}.pdf`;
 
   // Enviar el evento SSE

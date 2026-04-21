@@ -7,6 +7,7 @@ import {
   StudentFromFlutter,
 } from "../../domain/interfaces/udea.interfaces";
 import { mapAsignaturaToAreaUdea } from "../mappers/udeaSubjectMapper";
+import { buildExamAssignmentUpdate, udeaAreaNameMap } from "./helpers/examAssignmentUpdate";
 
 // SD poblacional ÷N — el grupo ES la población completa.
 function calcularEstadisticas(aciertos: number[]): {
@@ -72,7 +73,7 @@ export class UdeaScoringService {
       const exam = exams.find((e) => e.idSimulacro === idSimulacro);
       if (!exam) continue;
 
-      const subjects = exam.subjects ?? [];
+      const subjects = exam.subjects ?? exam.materias ?? [];
       if (!subjects.length) continue;
 
       const areasMap = new Map<
@@ -83,17 +84,13 @@ export class UdeaScoringService {
       for (const subject of subjects) {
         const areaKey = mapAsignaturaToAreaUdea(subject.name ?? "");
 
-        console.log(
-          `Procesando estudiante ${student.id_estudiante}, asignatura: ${subject.name}`,
-        );
         if (!areaKey) continue;
 
         const existing = areasMap.get(areaKey);
         if (existing) {
           // Si hay dos subjects del mismo área, acumular
           existing.correctas += subject.correctAnswers ?? 0;
-          existing.total +=
-            (subject.correctAnswers ?? 0) + (subject.incorrectAnswers ?? 0);
+          existing.total += (subject.correctAnswers ?? 0) + (subject.incorrectAnswers ?? 0);
         } else {
           areasMap.set(areaKey, {
             nombre: subject.name ?? "",
@@ -110,7 +107,8 @@ export class UdeaScoringService {
     }
 
     // 2. Separar presentados / no presentados
-    // Flutter envía presento=true/false basado en sessionResponses (igual que el cálculo local)
+    // Para UdeA, si ya hay respuestas acumuladas por área (>0), cuenta como presentado
+    // aunque `presento` venga false.
     const presentadosIds = new Set<string>(
       students
         .filter((s) => s.presento === true)
@@ -125,16 +123,17 @@ export class UdeaScoringService {
     const noPresentados = new Set<string>();
 
     for (const [id, areas] of porEstudiante) {
-      if (presentadosIds.has(id)) {
+      const totalRespondido = [...areas.values()].reduce(
+        (s, a) => s + a.total,
+        0,
+      );
+
+      if (presentadosIds.has(id) || totalRespondido > 0) {
         presentados.set(id, areas);
       } else {
         noPresentados.add(id);
       }
     }
-
-    console.log(
-      `[UdeA] Presentados: ${presentados.size} / ${porEstudiante.size}`,
-    );
 
     // 3. Media y SD poblacional por área — solo presentados
     const aciertosPorArea = new Map<AreaUdea, number[]>();
@@ -148,9 +147,6 @@ export class UdeaScoringService {
     const estadisticas = new Map<AreaUdea, { media: number; sd: number }>();
     for (const [areaKey, aciertos] of aciertosPorArea) {
       const est = calcularEstadisticas(aciertos);
-      console.log(
-        `[UdeA] ${areaKey} → Media: ${est.media.toFixed(2)} | SD: ${est.sd.toFixed(2)}`,
-      );
       estadisticas.set(areaKey, est);
     }
 
@@ -170,15 +166,12 @@ export class UdeaScoringService {
       const areasDetalle: PuntajeAreaUdea[] = [];
       let suma = 0;
       let count = 0;
+      let totalAnswered = 0;
+      let totalCorrectas = 0;
 
       for (const [areaKey, stats] of areas) {
         const est = estadisticas.get(areaKey) ?? { media: 0, sd: 1 };
         const puntaje = calcularPuntaje(stats.correctas, est.media, est.sd);
-
-        //  LOG igual que Flutter
-        console.log(
-          `[UdeA] ${nombrePorId.get(idEstudiante) ?? idEstudiante} | ${stats.nombre}: aciertos=${stats.correctas} media=${est.media.toFixed(2)} sd=${est.sd.toFixed(2)} → P=${puntaje}`,
-        );
 
         areasDetalle.push({
           area: stats.nombre,
@@ -192,19 +185,24 @@ export class UdeaScoringService {
 
         suma += puntaje;
         count++;
+        totalAnswered += stats.total;
+        totalCorrectas += stats.correctas;
       }
 
-      const globalEstudiante =
+      const sinAciertos = totalAnswered === 0 || totalCorrectas === 0;
+      const areasFinales = sinAciertos
+        ? areasDetalle.map((a) => ({ ...a, puntaje: 0 }))
+        : areasDetalle;
+      const globalCalculado =
         count > 0 ? parseFloat((suma / count).toFixed(1)) : 0;
-      console.log(
-        `[UdeA] ${nombrePorId.get(idEstudiante) ?? idEstudiante} → global: ${globalEstudiante}`,
-      );
+      const globalEstudiante = sinAciertos ? 0 : globalCalculado;
 
       resultados.push({
         idEstudiante,
-        areas: areasDetalle,
+        areas: areasFinales,
         puntajeGlobal: globalEstudiante,
         position: 0, // se calcula abajo
+        totalAnswered,
         fechaCalculo,
       });
     }
@@ -228,6 +226,7 @@ export class UdeaScoringService {
         areas: areasVacias,
         puntajeGlobal: 0,
         position: 0,
+        totalAnswered: 0,
         fechaCalculo,
       });
     }
@@ -243,43 +242,39 @@ export class UdeaScoringService {
       r.nombre = nombrePorId.get(r.idEstudiante) ?? `ID: ${r.idEstudiante}`;
     }
 
-    // 6. Guardar en Estudiantes
-    await this.guardarResultados(resultados);
+    const bulkStudents: any[] = [];
+    const bulkEstudiantes: any[] = [];
 
-    return { idSimulacro, resultados, fechaCalculo };
-  }
-
-  private async guardarResultados(resultados: ResultadoUdea[]): Promise<void> {
-    if (resultados.length === 0) return;
-
-    for (const r of resultados) {
-      const enStudents = await this.db.collection("students").updateOne(
-        { id_estudiante: r.idEstudiante },
-        {
-          $set: {
-            scoreUdea: r.puntajeGlobal,
-            positionUdea: r.position,
-            lastCalculoUdea: r.fechaCalculo,
-            areasUdea: r.areas,
-          },
-        },
+    for (const resultado of resultados) {
+      const { $set, arrayFilters } = buildExamAssignmentUpdate(
+        resultado.puntajeGlobal,
+        resultado.areas,
+        idSimulacro,
+        udeaAreaNameMap,
       );
-      // Solo si no existe en students, buscar en Estudiantes (legacy)
-      if (enStudents.matchedCount === 0) {
-        await this.db.collection("Estudiantes").updateOne(
-          { id_student: r.idEstudiante },
-          {
-            $set: {
-              scoreUdea: r.puntajeGlobal,
-              positionUdea: r.position,
-              lastCalculoUdea: r.fechaCalculo,
-              areasUdea: r.areas,
-            },
-          },
-        );
-      }
+
+      bulkStudents.push({
+        updateOne: {
+          filter: { id_estudiante: resultado.idEstudiante },
+          update: { $set },
+          arrayFilters,
+        },
+      });
+
+      bulkEstudiantes.push({
+        updateOne: {
+          filter: { id_student: resultado.idEstudiante },
+          update: { $set },
+          arrayFilters,
+        },
+      });
     }
 
-    console.log(`[UdeA] ✅ Guardados ${resultados.length} estudiantes`);
+    await Promise.all([
+      this.db.collection("students").bulkWrite(bulkStudents, { ordered: false }),
+      this.db.collection("Estudiantes").bulkWrite(bulkEstudiantes, { ordered: false }),
+    ]);
+
+    return { idSimulacro, resultados, fechaCalculo };
   }
 }

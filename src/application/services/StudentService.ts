@@ -14,7 +14,7 @@ export class StudentService {
 
   async getStudentPosition(grado: string, id_student: string): Promise<StudentPosition> {
     const student = await this.repository.findOne('students', { id_student });
-    
+
     if (!student) {
       return { posicion: 0, n_estudiantes: 0 };
     }
@@ -84,31 +84,39 @@ export class StudentService {
 
   async createStudent(collectionName: string, data: any, id?: string): Promise<any> {
     const documentData = id ? { ...data, id } : data;
-    
     return await this.repository.create(collectionName, documentData);
   }
 
-  async removeExamenAsignado(ids_estudiantes: string[], id_simulacro: string,classroomId:string): Promise<{updated: string[], notFound: string[]}> {
+  async removeExamenAsignado(
+    ids_estudiantes: string[],
+    id_simulacro: string,
+    classroomId: string,
+  ): Promise<{ updated: string[]; notFound: string[] }> {
     const updated: string[] = [];
     const notFound: string[] = [];
 
     for (const id_estudiante of ids_estudiantes) {
       const student = await this.repository.findOne('students', { id_estudiante });
-  
-      
+
       if (!student) {
         notFound.push(id_estudiante);
         continue;
       }
 
-      if (student.examenes_asignados && Array.isArray(student.examenes_asignados)) {
-        const originalLength = student.examenes_asignados.length;
-        student.examenes_asignados = student.examenes_asignados.filter((examen: any) => examen.id_simulacro !== id_simulacro&& examen.classroomId!==classroomId);
-        if (originalLength !== student.examenes_asignados.length) {
-          await this.repository.updateById('students', student._id, { examenes_asignados: student.examenes_asignados });
-          updated.push(id_estudiante);
-        }
-      }
+      await this.repository.updateOneWithOperators(
+        'students',
+        { id_estudiante },
+        {
+          $pull: {
+            examenes_asignados: {
+              id_simulacro,
+              classroomId,
+            },
+          },
+        },
+      );
+
+      updated.push(id_estudiante);
     }
 
     return { updated, notFound };
