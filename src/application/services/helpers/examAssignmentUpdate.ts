@@ -1,6 +1,6 @@
-import { AreaSaber11, PuntajeArea } from "../../../domain/interfaces/saberInterfaces";
-import { AreaUdea, PuntajeAreaUdea } from "../../../domain/interfaces/udeaInterfaces";
-import { AreaUnal, PuntajeAreaUnal } from "../../../domain/interfaces/unalInterface";
+import { PuntajeArea } from "../../../domain/interfaces/saber.interfaces";
+import { PuntajeAreaUdea } from "../../../domain/interfaces/udea.interfaces";
+import { PuntajeAreaUnal } from "../../../domain/interfaces/unal-interfaces";
 
 type AreaScore =
   | Pick<PuntajeArea, "area" | "puntaje">

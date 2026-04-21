@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
 import { MongoSessionStorage } from '../../infrastructure/database/MongoSessionStorage';
 import { authService } from '../../application/services/AuthService';
 
@@ -12,9 +11,7 @@ export interface AuthRequest extends Request {
   };
 }
 
-/**
- * Extract client IP address from request
- */
+// Extract client IP address from request
 export function getClientIp(req: Request): string {
   // Check various headers for the real IP
   const forwarded = req.headers['x-forwarded-for'];
@@ -31,16 +28,12 @@ export function getClientIp(req: Request): string {
   return req.socket.remoteAddress || 'unknown';
 }
 
-/**
- * Extract user agent from request
- */
+// Extract user agent from request
 export function getUserAgent(req: Request): string {
   return req.headers['user-agent'] || 'unknown';
 }
 
-/**
- * Authentication middleware with IP validation
- */
+// Authentication middleware with IP validation
 export async function authenticate(
   req: AuthRequest,
   res: Response,
