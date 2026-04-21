@@ -1,63 +1,37 @@
-import fs from 'fs';
-import path from 'path';
-import { NextFunction, Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { ResponseHandler } from '../../../shared/utils/responseHandler';
+import { ImageService } from '../../../application/services/ImageService';
+import { getRequestHost, getRequestProtocol } from '../../../shared/utils/requestUrl';
+import { FileSystemImageStorage } from '../../../infrastructure/database/FileSystemImageStorage';
 
-export const uploadImage = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { image } = req.body;
+export class ImageController {
+  private imageService: ImageService;
 
-    if (!image) {
-      return ResponseHandler.badRequest(res, 'No image data provided');
-    }
-
-    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-    const imageBuffer = Buffer.from(base64Data, 'base64');
-    const filename = `image-${Date.now()}-${Math.round(Math.random() * 1E9)}.png`;
-
-    const uploadsDir = path.join(process.cwd(), 'storage/uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
-    fs.writeFileSync(path.join(uploadsDir, filename), imageBuffer);
-
-    const fullUrl = `${req.protocol}://${req.get('host')}/uploads/${filename}`;
-
-    return ResponseHandler.success(res, { url: fullUrl }, 'Image uploaded successfully', 201);
-  } catch (error) {
-    return next(error);
+  constructor() {
+    const imageStorage = new FileSystemImageStorage();
+    this.imageService = new ImageService(imageStorage);
   }
-};
 
-export const uploadMultipleImages = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { images } = req.body;
-
-    if (!images || !Array.isArray(images) || images.length === 0) {
-      return ResponseHandler.badRequest(res, 'No images provided');
+  async uploadImage(req: Request, res: Response) {
+    try {
+      const { imageBase64 } = req.body;
+      const requestInfo = { protocol: getRequestProtocol(req), host: getRequestHost(req) };
+      const result = await this.imageService.uploadImage(imageBase64, requestInfo);
+      ResponseHandler.success(res, result);
+    } catch (error) {
+      ResponseHandler.error(res, error);
     }
-
-    const uploadsDir = path.join(process.cwd(), 'storage/uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-    const imageUrls = images.map((imageBase64: string, index: number) => {
-      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-      const imageBuffer = Buffer.from(base64Data, 'base64');
-      const filename = `image-${Date.now()}-${index}-${Math.round(Math.random() * 1E9)}.png`;
-      fs.writeFileSync(path.join(uploadsDir, filename), imageBuffer);
-      return {
-        url: `/uploads/${filename}`,
-        fullUrl: `${baseUrl}/uploads/${filename}`
-      };
-    });
-
-    return ResponseHandler.success(res, { urls: imageUrls }, 'Images uploaded successfully', 201);
-  } catch (error) {
-    return next(error);
   }
-};
+
+  async uploadMultipleImages(req: Request, res: Response) {
+    try {
+      const { imagesBase64 } = req.body;
+      const requestInfo = { protocol: getRequestProtocol(req), host: getRequestHost(req) };
+      const result = await this.imageService.uploadMultipleImages(imagesBase64, requestInfo);
+      ResponseHandler.success(res, result);
+    } catch (error) {
+      ResponseHandler.error(res, error);
+    }
+  }
+
+}
