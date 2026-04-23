@@ -8,7 +8,7 @@ export class ProgressService {
 
     constructor() {
         this.ResultadosModel = createDynamicModel('resultados_preguntas', {});
-        this.DetallePreguntasModel = createDynamicModel('detail_preguntas', {});
+        this.DetallePreguntasModel = createDynamicModel('question_details', {});
         this.EstudiantesModel = createDynamicModel('Estudiantes', {});
     }
 

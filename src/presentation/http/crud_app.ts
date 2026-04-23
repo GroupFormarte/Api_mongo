@@ -10,7 +10,7 @@ const router = Router();
 router.get('/preguntas-por-tipo/:idPrograma/:type/:value', async (req: Request, res: Response) => {
   const { idPrograma, type, value } = req.params;
   const GradosModel = createDynamicModel('Grados', {});
-  const DetailsPreguntas = createDynamicModel('detail_preguntas', {});
+  const DetailsPreguntas = createDynamicModel('question_details', {});
   try {
     const document: any = await GradosModel.findById(idPrograma);
     if (!document) {
@@ -35,7 +35,7 @@ router.get('/preguntas-por-tipo/:idPrograma/:type/:value', async (req: Request, 
 
 router.get('/preguntas/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
-  const DetailsPreguntas = createDynamicModel('detail_preguntas', {});
+  const DetailsPreguntas = createDynamicModel('question_details', {});
   const documentos: any = await DetailsPreguntas.findById(id);
   if (!documentos) {
     return res.status(404).send();
@@ -53,7 +53,7 @@ router.get('/preguntas/:id', async (req: Request, res: Response) => {
 router.get('/generate-simulacro/:id/:type', async (req: Request, res: Response) => {
   const { id, type } = req.params;
   const GradosModel = createDynamicModel('Grados', {});
-  const DetailsPreguntas = createDynamicModel('detail_preguntas', {});
+  const DetailsPreguntas = createDynamicModel('question_details', {});
 
   try {
     const document: any = await GradosModel.findById(id);
@@ -93,8 +93,8 @@ router.get('/generate-simulacro/:id/:type', async (req: Request, res: Response) 
   }
 })
 
-router.get('/detail_preguntas', async (req: Request, res: Response) => {
-  const DynamicModel = createDynamicModel('detail_preguntas', {});
+router.get('/question_details', async (req: Request, res: Response) => {
+  const DynamicModel = createDynamicModel('question_details', {});
   const GradosModel = createDynamicModel('Grados', {});
   const AreasModel = createDynamicModel('Area', {});
   try {
