@@ -74,7 +74,7 @@ export class AcademicService {
   }
 
   async generateSimulacro(value: string, cantidad: string): Promise<SimulacroData> {
-    const document = await this.repository.findOne('Grades', { value });
+    const document = await this.repository.findOne('grades', { value });
     if (!document) {
       throw new Error("Grado no encontrado");
     }
@@ -115,7 +115,7 @@ export class AcademicService {
   }
 
   async getQuestionsByTypeAndArea(idPrograma: string, value: string): Promise<QuestionsByTypeAndArea[]> {
-    const grados = await this.repository.find('Grades', { value: idPrograma });
+    const grados = await this.repository.find('grades', { value: idPrograma });
     if (!grados || grados.length === 0) {
       throw new Error("Programa no encontrado");
     }
