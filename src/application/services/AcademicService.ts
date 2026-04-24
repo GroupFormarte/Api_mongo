@@ -15,7 +15,7 @@ export class AcademicService {
       const document = await this.repository.findById("Area", idAsignature);
       if (!document) continue;
 
-      const questions = await this.repository.find('detail_preguntas', {
+      const questions = await this.repository.find('question_details', {
         grado,
         tipo_platform: 'App',
         area: document.value
@@ -39,7 +39,7 @@ export class AcademicService {
       const document = await this.repository.findById("Asignaturas", idAsignature);
       if (!document) continue;
 
-      const questions = await this.repository.find('detail_preguntas', {
+      const questions = await this.repository.find('question_details', {
         grado,
         tipo_platform: 'App',
         asignatura: document.value
@@ -60,7 +60,7 @@ export class AcademicService {
     const document = await this.repository.findById("Asignaturas", idAsignature);
     if (!document) return null;
 
-    const questions = await this.repository.find('detail_preguntas', {
+    const questions = await this.repository.find('question_details', {
       grado: valueGrado,
       tipo_platform: 'App',
       asignatura: document.value
@@ -74,12 +74,12 @@ export class AcademicService {
   }
 
   async generateSimulacro(value: string, cantidad: string): Promise<SimulacroData> {
-    const document = await this.repository.findOne('Grados', { value });
+    const document = await this.repository.findOne('grades', { value });
     if (!document) {
       throw new Error("Grado no encontrado");
     }
 
-    const pregunt = await this.repository.find('detail_preguntas', {
+    const pregunt = await this.repository.find('question_details', {
       programa: value,
       tipo_platform: 'App'
     });
@@ -111,16 +111,16 @@ export class AcademicService {
   }
 
   async getQuestionById(idquestion: string): Promise<any | null> {
-    return await this.repository.findById("detail_preguntas", idquestion);
+    return await this.repository.findById("question_details", idquestion);
   }
 
   async getQuestionsByTypeAndArea(idPrograma: string, value: string): Promise<QuestionsByTypeAndArea[]> {
-    const grados = await this.repository.find('Grados', { value: idPrograma });
+    const grados = await this.repository.find('grades', { value: idPrograma });
     if (!grados || grados.length === 0) {
       throw new Error("Programa no encontrado");
     }
 
-    const preguntas = await this.repository.find('detail_preguntas', {
+    const preguntas = await this.repository.find('question_details', {
       area: value,
       tipo_platform: { $in: [null, "Examen"] },
       programa: idPrograma,
