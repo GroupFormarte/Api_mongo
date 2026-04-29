@@ -9,7 +9,7 @@ const router = Router();
 
 router.get('/preguntas-por-tipo/:idPrograma/:type/:value', async (req: Request, res: Response) => {
   const { idPrograma, type, value } = req.params;
-  const GradosModel = createDynamicModel('Grados', {});
+  const GradosModel = createDynamicModel('grades', {});
   const DetailsPreguntas = createDynamicModel('question_details', {});
   try {
     const document: any = await GradosModel.findById(idPrograma);
@@ -52,7 +52,7 @@ router.get('/preguntas/:id', async (req: Request, res: Response) => {
 
 router.get('/generate-simulacro/:id/:type', async (req: Request, res: Response) => {
   const { id, type } = req.params;
-  const GradosModel = createDynamicModel('Grados', {});
+  const GradosModel = createDynamicModel('grades', {});
   const DetailsPreguntas = createDynamicModel('question_details', {});
 
   try {
@@ -95,8 +95,8 @@ router.get('/generate-simulacro/:id/:type', async (req: Request, res: Response) 
 
 router.get('/question_details', async (req: Request, res: Response) => {
   const DynamicModel = createDynamicModel('question_details', {});
-  const GradosModel = createDynamicModel('Grados', {});
-  const AreasModel = createDynamicModel('Area', {});
+  const GradosModel = createDynamicModel('grades', {});
+  const AreasModel = createDynamicModel('areas', {});
   try {
     const documents = await DynamicModel.find();
     if (!documents || documents.length === 0) {
