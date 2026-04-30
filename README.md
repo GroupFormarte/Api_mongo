@@ -94,3 +94,4 @@ Ver `FORMARTE_API_GUIDE.md` para endpoints por modulo, ejemplos y convenciones d
   `MONGO_URI` apunta a localhost sin MongoDB activo. Configura una URI valida (local o remota) en `.env`.
 - Error `Cannot find module ...` en rutas:
   revisar imports relativos dentro de `src/presentation/http/*` despues de mover archivos.
+
