@@ -95,3 +95,4 @@ Ver `FORMARTE_API_GUIDE.md` para endpoints por modulo, ejemplos y convenciones d
 - Error `Cannot find module ...` en rutas:
   revisar imports relativos dentro de `src/presentation/http/*` despues de mover archivos.
 
+
