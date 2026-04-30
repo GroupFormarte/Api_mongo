@@ -59,13 +59,13 @@ server.listen(port, async () => {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Graceful shutdown initiated...');
+  console.log('\n Graceful shutdown initiated...');
   try {
     await dbConnection.disconnect();
-    console.log('✅ Database disconnected');
+    console.log(' Database disconnected');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error during shutdown:', error);
+    console.error(' Error during shutdown:', error);
     process.exit(1);
   }
 });
