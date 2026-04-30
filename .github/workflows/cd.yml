@@ -4,6 +4,9 @@ on:
   workflow_run:
     workflows: ["Continuous Integration — Build & Publish"]
     types: [completed]
+    branches:
+      - master
+      - dev
   workflow_dispatch:
     inputs:
       artifact_name:
