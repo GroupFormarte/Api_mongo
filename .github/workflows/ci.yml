@@ -103,38 +103,157 @@ jobs:
         run: |
           echo "📤 Uploading to SharePoint: ${{ secrets.SHAREPOINT_FOLDER }}/${{ env.PROJECT_NAME }}"
           cat > /tmp/upload_sp.py << 'EOFPY'
-          import os,sys,time,uuid,hashlib,requests,jwt,base64,binascii
+          import os, sys, time, uuid, hashlib, requests, jwt, base64, binascii
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.backends import default_backend
-          T=os.environ['AZURE_TENANT_ID'];C=os.environ['AZURE_CLIENT_ID'];TH=os.environ['AZURE_CERT_THUMBPRINT'];PK=os.environ['AZURE_PRIVATE_KEY'];SU=os.environ['SHAREPOINT_SITE_URL'].rstrip('/');FS=f"{os.environ['SHAREPOINT_FOLDER']}/{os.environ.get('PROJECT_NAME','')}";AF=os.environ['ARTIFACT_FILE'];SH=SU.split('/')[2];SP='/'+'/'.join(SU.split('/')[3:]);DL='Documentos compartidos';CS=10*1024*1024;MR=5;RD=2
-          def norm_pem(s):return'
-'.join(l.strip()for l in s.strip().splitlines())
-          def retry(f,*a,**k):
-           for i in range(MR):
-            try:
-             r=f(*a,**k)
-             if r.status_code in[200,201,202]:return r
-             if r.status_code in[429,503,504]and i<MR-1:d=RD*(2**i);print(f"⚠️ {r.status_code}, retry {i+1}/{MR} in {d}s");time.sleep(d);continue
-             return r
-            except Exception as e:
-             if i<MR-1:d=RD*(2**i);print(f"⚠️ Error, retry {i+1}/{MR}");time.sleep(d);continue
-             raise
-           return r
-          def token():n=int(time.time());p={'aud':f'https://login.microsoftonline.com/{T}/oauth2/v2.0/token','exp':n+600,'iss':C,'jti':hashlib.sha256(os.urandom(32)).hexdigest(),'nbf':n,'sub':C};tb=binascii.unhexlify(TH.replace(':','').replace(' ',''));x=base64.urlsafe_b64encode(tb).rstrip(b'=').decode('ascii');pm=norm_pem(PK);pk=serialization.load_pem_private_key(pm.encode(),password=None,backend=default_backend());ca=jwt.encode(p,pk,algorithm='RS256',headers={'x5t':x});r=requests.post(f'https://login.microsoftonline.com/{T}/oauth2/v2.0/token',data={'client_id':C,'client_assertion_type':'urn:ietf:params:oauth:client-assertion-type:jwt-bearer','client_assertion':ca,'scope':f'https://{SH}/.default','grant_type':'client_credentials'},timeout=30);return r.json()['access_token']if r.status_code==200 else sys.exit(1)
-          def folder(t):from urllib.parse import quote;a=f"https://{SH}{SP}/_api/web";h={'Authorization':f'Bearer {t}','Accept':'application/json;odata=nometadata'};sf=os.environ['SHAREPOINT_FOLDER'];pn=os.environ.get('PROJECT_NAME','');pr=f"{SP}/{DL}/{sf}";tr=f"{pr}/{pn}";return True if requests.get(f"{a}/GetFolderByServerRelativeUrl('{tr}')",headers=h,timeout=30).status_code==200 else requests.post(f"{a}/GetFolderByServerRelativeUrl('{pr}')/folders/add(url='{quote(pn,safe='')}')",headers=h,timeout=30).status_code in[200,201]
-          def upload(t,fp):fs=os.path.getsize(fp);fn=os.path.basename(fp);print(f"📊 {fn}: {fs/(1024*1024):.2f}MB");h={'Authorization':f'Bearer {t}','Accept':'application/json;odata=nometadata'};fr=f"{SP}/{DL}/{FS}";a=f"https://{SH}{SP}/_api/web";fu=f"{a}/GetFolderByServerRelativeUrl('{fr}')";uu=f"{fu}/Files/add(url='{fn}',overwrite=true)"
-           if fs<=250*1024*1024:
-            with open(fp,'rb')as f:fd=f.read()
-            print("📤 Upload");r=retry(requests.post,uu,headers={**h,'Content-Type':'application/octet-stream'},data=fd,timeout=600);sys.exit(1)if r.status_code not in[200,201]else None
-           else:
-            u=str(uuid.uuid4())
-            with open(fp,'rb')as f:o=0;cn=0;tc=(fs+CS-1)//CS
-             while True:
-              c=f.read(CS)
-              if not c:break
-              cn+=1;isf=(o==0);isl=(o+len(c)>=fs);url=f"{fu}/Files/add(url='{fn}',overwrite=true)/StartUpload(uploadId=guid'{u}')"if isf else(f"{fu}/GetFileByUrl('{fn}')/FinishUpload(uploadId=guid'{u}',fileOffset={o})"if isl else f"{fu}/GetFileByUrl('{fn}')/ContinueUpload(uploadId=guid'{u}',fileOffset={o})");print(f"📤 {cn}/{tc} ({(o/fs)*100:.1f}%)");r=retry(requests.post,url,headers={**h,'Content-Type':'application/octet-stream'},data=c,timeout=300);ok=[200,201]if isl else[200,201,202];sys.exit(1)if r.status_code not in ok else None;o+=len(c)
-           print(f"✅ {fn}")
-          tk=token();folder(tk);upload(tk,AF);print("✅ Done!")
+
+          TENANT_ID       = os.environ['AZURE_TENANT_ID']
+          CLIENT_ID       = os.environ['AZURE_CLIENT_ID']
+          THUMBPRINT      = os.environ['AZURE_CERT_THUMBPRINT']
+          PRIVATE_KEY_PEM = os.environ['AZURE_PRIVATE_KEY']
+          SITE_URL        = os.environ['SHAREPOINT_SITE_URL'].rstrip('/')
+          FOLDER_SUFFIX   = f"{os.environ['SHAREPOINT_FOLDER']}/{os.environ.get('PROJECT_NAME', '')}"
+          ARTIFACT_FILE   = os.environ['ARTIFACT_FILE']
+
+          SITE_HOST   = SITE_URL.split('/')[2]
+          SITE_PATH   = '/' + '/'.join(SITE_URL.split('/')[3:])
+          DOC_LIBRARY = 'Documentos compartidos'
+          CHUNK_SIZE  = 10 * 1024 * 1024
+          MAX_RETRIES = 5
+          RETRY_DELAY = 2
+
+          def normalize_pem(pem_str):
+              lines = pem_str.strip().splitlines()
+              return chr(10).join(l.strip() for l in lines)
+
+          def retry_request(func, *args, **kwargs):
+              for attempt in range(MAX_RETRIES):
+                  try:
+                      resp = func(*args, **kwargs)
+                      if resp.status_code in [200, 201, 202]:
+                          return resp
+                      if resp.status_code in [429, 503, 504] and attempt < MAX_RETRIES - 1:
+                          delay = RETRY_DELAY * (2 ** attempt)
+                          print(f"⚠️ Error {resp.status_code}, retry {attempt+1}/{MAX_RETRIES} in {delay}s")
+                          time.sleep(delay)
+                          continue
+                      return resp
+                  except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                      if attempt < MAX_RETRIES - 1:
+                          delay = RETRY_DELAY * (2 ** attempt)
+                          print(f"⚠️ Network error, retry {attempt+1}/{MAX_RETRIES} in {delay}s")
+                          time.sleep(delay)
+                          continue
+                      raise
+              return resp
+
+          def get_access_token():
+              now = int(time.time())
+              payload = {
+                  'aud': f'https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token',
+                  'exp': now + 600, 'iss': CLIENT_ID,
+                  'jti': hashlib.sha256(os.urandom(32)).hexdigest(),
+                  'nbf': now, 'sub': CLIENT_ID
+              }
+              tb = binascii.unhexlify(THUMBPRINT.replace(':', '').replace(' ', ''))
+              x5t = base64.urlsafe_b64encode(tb).rstrip(b'=').decode('ascii')
+              pem = normalize_pem(PRIVATE_KEY_PEM)
+              pk  = serialization.load_pem_private_key(pem.encode(), password=None, backend=default_backend())
+              ca  = jwt.encode(payload, pk, algorithm='RS256', headers={'x5t': x5t})
+              resp = requests.post(
+                  f'https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token',
+                  data={'client_id': CLIENT_ID,
+                        'client_assertion_type': 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+                        'client_assertion': ca,
+                        'scope': f'https://{SITE_HOST}/.default',
+                        'grant_type': 'client_credentials'}, timeout=30)
+              if resp.status_code != 200:
+                  print(f"❌ Token failed [{resp.status_code}]: {resp.text[:500]}")
+                  sys.exit(1)
+              return resp.json()['access_token']
+
+          def ensure_project_folder_exists(token):
+              from urllib.parse import quote
+              api_base = f"https://{SITE_HOST}{SITE_PATH}/_api/web"
+              headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/json;odata=nometadata'}
+              sp_folder = os.environ['SHAREPOINT_FOLDER']
+              project_name = os.environ.get('PROJECT_NAME', '')
+              parent_rel = f"{SITE_PATH}/{DOC_LIBRARY}/{sp_folder}"
+              target_rel = f"{parent_rel}/{project_name}"
+              check_url = f"{api_base}/GetFolderByServerRelativeUrl('{target_rel}')"
+              if requests.get(check_url, headers=headers, timeout=30).status_code == 200:
+                  print(f"✅ Folder exists: {project_name}")
+                  return True
+              encoded = quote(project_name, safe='')
+              create_url = f"{api_base}/GetFolderByServerRelativeUrl('{parent_rel}')/folders/add(url='{encoded}')"
+              resp = requests.post(create_url, headers=headers, timeout=30)
+              if resp.status_code in [200, 201]:
+                  print(f"✅ Created folder: {project_name}")
+                  return True
+              print(f"❌ Could not create folder: {resp.text[:200]}")
+              return False
+
+          def upload_file(token, file_path):
+              file_size = os.path.getsize(file_path)
+              file_name = os.path.basename(file_path)
+              print(f"📊 File: {file_name}, Size: {file_size / (1024*1024):.2f} MB")
+              h_base = {'Authorization': f'Bearer {token}', 'Accept': 'application/json;odata=nometadata'}
+              folder_rel = f"{SITE_PATH}/{DOC_LIBRARY}/{FOLDER_SUFFIX}"
+              api_base = f"https://{SITE_HOST}{SITE_PATH}/_api/web"
+              folder_url = f"{api_base}/GetFolderByServerRelativeUrl('{folder_rel}')"
+
+              if file_size <= 250 * 1024 * 1024:
+                  upload_url = f"{folder_url}/Files/add(url='{file_name}',overwrite=true)"
+                  with open(file_path, 'rb') as f:
+                      file_data = f.read()
+                  print("📤 Uploading file in single request...")
+                  resp = retry_request(
+                      requests.post, upload_url,
+                      headers={**h_base, 'Content-Type': 'application/octet-stream'},
+                      data=file_data, timeout=600
+                  )
+                  if resp.status_code not in [200, 201]:
+                      print(f"❌ Upload failed [{resp.status_code}]: {resp.text[:400]}")
+                      sys.exit(1)
+              else:
+                  upload_id = str(uuid.uuid4())
+                  total_chunks = (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE
+                  with open(file_path, 'rb') as f:
+                      offset = 0
+                      chunk_num = 0
+                      while True:
+                          chunk = f.read(CHUNK_SIZE)
+                          if not chunk:
+                              break
+                          chunk_num += 1
+                          is_first = (offset == 0)
+                          is_last = (offset + len(chunk) >= file_size)
+                          if is_first:
+                              url = f"{folder_url}/Files/add(url='{file_name}',overwrite=true)/StartUpload(uploadId=guid'{upload_id}')"
+                          elif is_last:
+                              url = f"{folder_url}/GetFileByUrl('{file_name}')/FinishUpload(uploadId=guid'{upload_id}',fileOffset={offset})"
+                          else:
+                              url = f"{folder_url}/GetFileByUrl('{file_name}')/ContinueUpload(uploadId=guid'{upload_id}',fileOffset={offset})"
+
+                          pct = (offset / file_size) * 100
+                          print(f"📤 Chunk {chunk_num}/{total_chunks} ({pct:.1f}%) - {offset / (1024*1024):.1f} / {file_size / (1024*1024):.1f} MB")
+
+                          resp = retry_request(
+                              requests.post, url,
+                              headers={**h_base, 'Content-Type': 'application/octet-stream'},
+                              data=chunk, timeout=300
+                          )
+                          ok_codes = [200, 201] if is_last else [200, 201, 202]
+                          if resp.status_code not in ok_codes:
+                              print(f"❌ Chunk {chunk_num} failed [{resp.status_code}]: {resp.text[:300]}")
+                              sys.exit(1)
+                          offset += len(chunk)
+              print(f"✅ Uploaded: {file_name}")
+
+          token = get_access_token()
+          ensure_project_folder_exists(token)
+          upload_file(token, ARTIFACT_FILE)
+          print("✅ Artifact uploaded successfully!")
           EOFPY
           python3 /tmp/upload_sp.py
 
@@ -238,38 +357,157 @@ jobs:
         run: |
           echo "📤 Uploading to SharePoint: ${{ secrets.SHAREPOINT_FOLDER }}/${{ env.PROJECT_NAME }}"
           cat > /tmp/upload_sp.py << 'EOFPY'
-          import os,sys,time,uuid,hashlib,requests,jwt,base64,binascii
+          import os, sys, time, uuid, hashlib, requests, jwt, base64, binascii
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.backends import default_backend
-          T=os.environ['AZURE_TENANT_ID'];C=os.environ['AZURE_CLIENT_ID'];TH=os.environ['AZURE_CERT_THUMBPRINT'];PK=os.environ['AZURE_PRIVATE_KEY'];SU=os.environ['SHAREPOINT_SITE_URL'].rstrip('/');FS=f"{os.environ['SHAREPOINT_FOLDER']}/{os.environ.get('PROJECT_NAME','')}";AF=os.environ['ARTIFACT_FILE'];SH=SU.split('/')[2];SP='/'+'/'.join(SU.split('/')[3:]);DL='Documentos compartidos';CS=10*1024*1024;MR=5;RD=2
-          def norm_pem(s):return'
-'.join(l.strip()for l in s.strip().splitlines())
-          def retry(f,*a,**k):
-           for i in range(MR):
-            try:
-             r=f(*a,**k)
-             if r.status_code in[200,201,202]:return r
-             if r.status_code in[429,503,504]and i<MR-1:d=RD*(2**i);print(f"⚠️ {r.status_code}, retry {i+1}/{MR} in {d}s");time.sleep(d);continue
-             return r
-            except Exception as e:
-             if i<MR-1:d=RD*(2**i);print(f"⚠️ Error, retry {i+1}/{MR}");time.sleep(d);continue
-             raise
-           return r
-          def token():n=int(time.time());p={'aud':f'https://login.microsoftonline.com/{T}/oauth2/v2.0/token','exp':n+600,'iss':C,'jti':hashlib.sha256(os.urandom(32)).hexdigest(),'nbf':n,'sub':C};tb=binascii.unhexlify(TH.replace(':','').replace(' ',''));x=base64.urlsafe_b64encode(tb).rstrip(b'=').decode('ascii');pm=norm_pem(PK);pk=serialization.load_pem_private_key(pm.encode(),password=None,backend=default_backend());ca=jwt.encode(p,pk,algorithm='RS256',headers={'x5t':x});r=requests.post(f'https://login.microsoftonline.com/{T}/oauth2/v2.0/token',data={'client_id':C,'client_assertion_type':'urn:ietf:params:oauth:client-assertion-type:jwt-bearer','client_assertion':ca,'scope':f'https://{SH}/.default','grant_type':'client_credentials'},timeout=30);return r.json()['access_token']if r.status_code==200 else sys.exit(1)
-          def folder(t):from urllib.parse import quote;a=f"https://{SH}{SP}/_api/web";h={'Authorization':f'Bearer {t}','Accept':'application/json;odata=nometadata'};sf=os.environ['SHAREPOINT_FOLDER'];pn=os.environ.get('PROJECT_NAME','');pr=f"{SP}/{DL}/{sf}";tr=f"{pr}/{pn}";return True if requests.get(f"{a}/GetFolderByServerRelativeUrl('{tr}')",headers=h,timeout=30).status_code==200 else requests.post(f"{a}/GetFolderByServerRelativeUrl('{pr}')/folders/add(url='{quote(pn,safe='')}')",headers=h,timeout=30).status_code in[200,201]
-          def upload(t,fp):fs=os.path.getsize(fp);fn=os.path.basename(fp);print(f"📊 {fn}: {fs/(1024*1024):.2f}MB");h={'Authorization':f'Bearer {t}','Accept':'application/json;odata=nometadata'};fr=f"{SP}/{DL}/{FS}";a=f"https://{SH}{SP}/_api/web";fu=f"{a}/GetFolderByServerRelativeUrl('{fr}')";uu=f"{fu}/Files/add(url='{fn}',overwrite=true)"
-           if fs<=250*1024*1024:
-            with open(fp,'rb')as f:fd=f.read()
-            print("📤 Upload");r=retry(requests.post,uu,headers={**h,'Content-Type':'application/octet-stream'},data=fd,timeout=600);sys.exit(1)if r.status_code not in[200,201]else None
-           else:
-            u=str(uuid.uuid4())
-            with open(fp,'rb')as f:o=0;cn=0;tc=(fs+CS-1)//CS
-             while True:
-              c=f.read(CS)
-              if not c:break
-              cn+=1;isf=(o==0);isl=(o+len(c)>=fs);url=f"{fu}/Files/add(url='{fn}',overwrite=true)/StartUpload(uploadId=guid'{u}')"if isf else(f"{fu}/GetFileByUrl('{fn}')/FinishUpload(uploadId=guid'{u}',fileOffset={o})"if isl else f"{fu}/GetFileByUrl('{fn}')/ContinueUpload(uploadId=guid'{u}',fileOffset={o})");print(f"📤 {cn}/{tc} ({(o/fs)*100:.1f}%)");r=retry(requests.post,url,headers={**h,'Content-Type':'application/octet-stream'},data=c,timeout=300);ok=[200,201]if isl else[200,201,202];sys.exit(1)if r.status_code not in ok else None;o+=len(c)
-           print(f"✅ {fn}")
-          tk=token();folder(tk);upload(tk,AF);print("✅ Done!")
+
+          TENANT_ID       = os.environ['AZURE_TENANT_ID']
+          CLIENT_ID       = os.environ['AZURE_CLIENT_ID']
+          THUMBPRINT      = os.environ['AZURE_CERT_THUMBPRINT']
+          PRIVATE_KEY_PEM = os.environ['AZURE_PRIVATE_KEY']
+          SITE_URL        = os.environ['SHAREPOINT_SITE_URL'].rstrip('/')
+          FOLDER_SUFFIX   = f"{os.environ['SHAREPOINT_FOLDER']}/{os.environ.get('PROJECT_NAME', '')}"
+          ARTIFACT_FILE   = os.environ['ARTIFACT_FILE']
+
+          SITE_HOST   = SITE_URL.split('/')[2]
+          SITE_PATH   = '/' + '/'.join(SITE_URL.split('/')[3:])
+          DOC_LIBRARY = 'Documentos compartidos'
+          CHUNK_SIZE  = 10 * 1024 * 1024
+          MAX_RETRIES = 5
+          RETRY_DELAY = 2
+
+          def normalize_pem(pem_str):
+              lines = pem_str.strip().splitlines()
+              return chr(10).join(l.strip() for l in lines)
+
+          def retry_request(func, *args, **kwargs):
+              for attempt in range(MAX_RETRIES):
+                  try:
+                      resp = func(*args, **kwargs)
+                      if resp.status_code in [200, 201, 202]:
+                          return resp
+                      if resp.status_code in [429, 503, 504] and attempt < MAX_RETRIES - 1:
+                          delay = RETRY_DELAY * (2 ** attempt)
+                          print(f"⚠️ Error {resp.status_code}, retry {attempt+1}/{MAX_RETRIES} in {delay}s")
+                          time.sleep(delay)
+                          continue
+                      return resp
+                  except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                      if attempt < MAX_RETRIES - 1:
+                          delay = RETRY_DELAY * (2 ** attempt)
+                          print(f"⚠️ Network error, retry {attempt+1}/{MAX_RETRIES} in {delay}s")
+                          time.sleep(delay)
+                          continue
+                      raise
+              return resp
+
+          def get_access_token():
+              now = int(time.time())
+              payload = {
+                  'aud': f'https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token',
+                  'exp': now + 600, 'iss': CLIENT_ID,
+                  'jti': hashlib.sha256(os.urandom(32)).hexdigest(),
+                  'nbf': now, 'sub': CLIENT_ID
+              }
+              tb = binascii.unhexlify(THUMBPRINT.replace(':', '').replace(' ', ''))
+              x5t = base64.urlsafe_b64encode(tb).rstrip(b'=').decode('ascii')
+              pem = normalize_pem(PRIVATE_KEY_PEM)
+              pk  = serialization.load_pem_private_key(pem.encode(), password=None, backend=default_backend())
+              ca  = jwt.encode(payload, pk, algorithm='RS256', headers={'x5t': x5t})
+              resp = requests.post(
+                  f'https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token',
+                  data={'client_id': CLIENT_ID,
+                        'client_assertion_type': 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+                        'client_assertion': ca,
+                        'scope': f'https://{SITE_HOST}/.default',
+                        'grant_type': 'client_credentials'}, timeout=30)
+              if resp.status_code != 200:
+                  print(f"❌ Token failed [{resp.status_code}]: {resp.text[:500]}")
+                  sys.exit(1)
+              return resp.json()['access_token']
+
+          def ensure_project_folder_exists(token):
+              from urllib.parse import quote
+              api_base = f"https://{SITE_HOST}{SITE_PATH}/_api/web"
+              headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/json;odata=nometadata'}
+              sp_folder = os.environ['SHAREPOINT_FOLDER']
+              project_name = os.environ.get('PROJECT_NAME', '')
+              parent_rel = f"{SITE_PATH}/{DOC_LIBRARY}/{sp_folder}"
+              target_rel = f"{parent_rel}/{project_name}"
+              check_url = f"{api_base}/GetFolderByServerRelativeUrl('{target_rel}')"
+              if requests.get(check_url, headers=headers, timeout=30).status_code == 200:
+                  print(f"✅ Folder exists: {project_name}")
+                  return True
+              encoded = quote(project_name, safe='')
+              create_url = f"{api_base}/GetFolderByServerRelativeUrl('{parent_rel}')/folders/add(url='{encoded}')"
+              resp = requests.post(create_url, headers=headers, timeout=30)
+              if resp.status_code in [200, 201]:
+                  print(f"✅ Created folder: {project_name}")
+                  return True
+              print(f"❌ Could not create folder: {resp.text[:200]}")
+              return False
+
+          def upload_file(token, file_path):
+              file_size = os.path.getsize(file_path)
+              file_name = os.path.basename(file_path)
+              print(f"📊 File: {file_name}, Size: {file_size / (1024*1024):.2f} MB")
+              h_base = {'Authorization': f'Bearer {token}', 'Accept': 'application/json;odata=nometadata'}
+              folder_rel = f"{SITE_PATH}/{DOC_LIBRARY}/{FOLDER_SUFFIX}"
+              api_base = f"https://{SITE_HOST}{SITE_PATH}/_api/web"
+              folder_url = f"{api_base}/GetFolderByServerRelativeUrl('{folder_rel}')"
+
+              if file_size <= 250 * 1024 * 1024:
+                  upload_url = f"{folder_url}/Files/add(url='{file_name}',overwrite=true)"
+                  with open(file_path, 'rb') as f:
+                      file_data = f.read()
+                  print("📤 Uploading file in single request...")
+                  resp = retry_request(
+                      requests.post, upload_url,
+                      headers={**h_base, 'Content-Type': 'application/octet-stream'},
+                      data=file_data, timeout=600
+                  )
+                  if resp.status_code not in [200, 201]:
+                      print(f"❌ Upload failed [{resp.status_code}]: {resp.text[:400]}")
+                      sys.exit(1)
+              else:
+                  upload_id = str(uuid.uuid4())
+                  total_chunks = (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE
+                  with open(file_path, 'rb') as f:
+                      offset = 0
+                      chunk_num = 0
+                      while True:
+                          chunk = f.read(CHUNK_SIZE)
+                          if not chunk:
+                              break
+                          chunk_num += 1
+                          is_first = (offset == 0)
+                          is_last = (offset + len(chunk) >= file_size)
+                          if is_first:
+                              url = f"{folder_url}/Files/add(url='{file_name}',overwrite=true)/StartUpload(uploadId=guid'{upload_id}')"
+                          elif is_last:
+                              url = f"{folder_url}/GetFileByUrl('{file_name}')/FinishUpload(uploadId=guid'{upload_id}',fileOffset={offset})"
+                          else:
+                              url = f"{folder_url}/GetFileByUrl('{file_name}')/ContinueUpload(uploadId=guid'{upload_id}',fileOffset={offset})"
+
+                          pct = (offset / file_size) * 100
+                          print(f"📤 Chunk {chunk_num}/{total_chunks} ({pct:.1f}%) - {offset / (1024*1024):.1f} / {file_size / (1024*1024):.1f} MB")
+
+                          resp = retry_request(
+                              requests.post, url,
+                              headers={**h_base, 'Content-Type': 'application/octet-stream'},
+                              data=chunk, timeout=300
+                          )
+                          ok_codes = [200, 201] if is_last else [200, 201, 202]
+                          if resp.status_code not in ok_codes:
+                              print(f"❌ Chunk {chunk_num} failed [{resp.status_code}]: {resp.text[:300]}")
+                              sys.exit(1)
+                          offset += len(chunk)
+              print(f"✅ Uploaded: {file_name}")
+
+          token = get_access_token()
+          ensure_project_folder_exists(token)
+          upload_file(token, ARTIFACT_FILE)
+          print("✅ Artifact uploaded successfully!")
           EOFPY
           python3 /tmp/upload_sp.py
 
