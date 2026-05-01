@@ -216,8 +216,25 @@ jobs:
                       print(f"❌ Upload failed [{resp.status_code}]: {resp.text[:400]}")
                       sys.exit(1)
               else:
+                  # Workaround: SharePoint requires file to exist before StartUpload
+                  # Create a 1-byte placeholder file first, then chunk-upload over it
+                  print("📤 Creating placeholder file for chunked upload...")
+                  create_url = f"{folder_url}/Files/add(url='{file_name}',overwrite=true)"
+                  resp = retry_request(
+                      requests.post, create_url,
+                      headers={**h_base, 'Content-Type': 'application/octet-stream'},
+                      data=b'\x00', timeout=60
+                  )
+                  if resp.status_code not in [200, 201]:
+                      print(f"❌ Placeholder creation failed [{resp.status_code}]: {resp.text[:400]}")
+                      sys.exit(1)
+                  print("✅ Placeholder created, starting chunked upload...")
+
                   upload_id = str(uuid.uuid4())
                   total_chunks = (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE
+                  file_server_rel = f"{folder_rel}/{file_name}"
+                  file_url = f"{api_base}/GetFileByServerRelativeUrl('{file_server_rel}')"
+
                   with open(file_path, 'rb') as f:
                       offset = 0
                       chunk_num = 0
@@ -229,11 +246,11 @@ jobs:
                           is_first = (offset == 0)
                           is_last = (offset + len(chunk) >= file_size)
                           if is_first:
-                              url = f"{folder_url}/Files/add(url='{file_name}',overwrite=true)/StartUpload(uploadId=guid'{upload_id}')"
+                              url = f"{file_url}/StartUpload(uploadId=guid'{upload_id}')"
                           elif is_last:
-                              url = f"{folder_url}/GetFileByUrl('{file_name}')/FinishUpload(uploadId=guid'{upload_id}',fileOffset={offset})"
+                              url = f"{file_url}/FinishUpload(uploadId=guid'{upload_id}',fileOffset={offset})"
                           else:
-                              url = f"{folder_url}/GetFileByUrl('{file_name}')/ContinueUpload(uploadId=guid'{upload_id}',fileOffset={offset})"
+                              url = f"{file_url}/ContinueUpload(uploadId=guid'{upload_id}',fileOffset={offset})"
 
                           pct = (offset / file_size) * 100
                           print(f"📤 Chunk {chunk_num}/{total_chunks} ({pct:.1f}%) - {offset / (1024*1024):.1f} / {file_size / (1024*1024):.1f} MB")
@@ -470,8 +487,25 @@ jobs:
                       print(f"❌ Upload failed [{resp.status_code}]: {resp.text[:400]}")
                       sys.exit(1)
               else:
+                  # Workaround: SharePoint requires file to exist before StartUpload
+                  # Create a 1-byte placeholder file first, then chunk-upload over it
+                  print("📤 Creating placeholder file for chunked upload...")
+                  create_url = f"{folder_url}/Files/add(url='{file_name}',overwrite=true)"
+                  resp = retry_request(
+                      requests.post, create_url,
+                      headers={**h_base, 'Content-Type': 'application/octet-stream'},
+                      data=b'\x00', timeout=60
+                  )
+                  if resp.status_code not in [200, 201]:
+                      print(f"❌ Placeholder creation failed [{resp.status_code}]: {resp.text[:400]}")
+                      sys.exit(1)
+                  print("✅ Placeholder created, starting chunked upload...")
+
                   upload_id = str(uuid.uuid4())
                   total_chunks = (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE
+                  file_server_rel = f"{folder_rel}/{file_name}"
+                  file_url = f"{api_base}/GetFileByServerRelativeUrl('{file_server_rel}')"
+
                   with open(file_path, 'rb') as f:
                       offset = 0
                       chunk_num = 0
@@ -483,11 +517,11 @@ jobs:
                           is_first = (offset == 0)
                           is_last = (offset + len(chunk) >= file_size)
                           if is_first:
-                              url = f"{folder_url}/Files/add(url='{file_name}',overwrite=true)/StartUpload(uploadId=guid'{upload_id}')"
+                              url = f"{file_url}/StartUpload(uploadId=guid'{upload_id}')"
                           elif is_last:
-                              url = f"{folder_url}/GetFileByUrl('{file_name}')/FinishUpload(uploadId=guid'{upload_id}',fileOffset={offset})"
+                              url = f"{file_url}/FinishUpload(uploadId=guid'{upload_id}',fileOffset={offset})"
                           else:
-                              url = f"{folder_url}/GetFileByUrl('{file_name}')/ContinueUpload(uploadId=guid'{upload_id}',fileOffset={offset})"
+                              url = f"{file_url}/ContinueUpload(uploadId=guid'{upload_id}',fileOffset={offset})"
 
                           pct = (offset / file_size) * 100
                           print(f"📤 Chunk {chunk_num}/{total_chunks} ({pct:.1f}%) - {offset / (1024*1024):.1f} / {file_size / (1024*1024):.1f} MB")
