@@ -8,5 +8,5 @@ services:
     ports:
       - "8091:3000"  # Puedes modificar el puerto según tus necesidades
     volumes:
-      - ./uploads:/usr/src/app/uploads
+      - ./storage/uploads:/usr/src/app/storage/uploads
     restart: always
