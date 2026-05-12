@@ -2,6 +2,7 @@ import { Express } from 'express';
 import cors from 'cors';
 import express from 'express';
 import path from 'path';
+import { env } from '../shared/config/env';
 
 export const setupMiddlewares = (app: Express): void => {
   app.use(cors({
@@ -13,7 +14,7 @@ export const setupMiddlewares = (app: Express): void => {
   app.use(express.json({ limit: '100mb' }));
   app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
-  app.use('/uploads', express.static(path.join(process.cwd(), 'storage/uploads'), {
+  app.use('/uploads', express.static(env.uploadPath, {
     setHeaders: (res) => {
       res.set('Access-Control-Allow-Origin', '*');
       res.set('Access-Control-Allow-Methods', 'GET');

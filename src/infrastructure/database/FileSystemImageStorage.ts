@@ -1,13 +1,14 @@
 import fs from 'fs';
 import path from 'path';
-import {  ImageStoragePort } from '../../application/services/ImageService';
-import {  ImageMetadata } from '../../domain/entities/ImageEntity';
+import { ImageStoragePort } from '../../application/services/ImageService';
+import { ImageMetadata } from '../../domain/entities/ImageEntity';
+import { env } from '../../shared/config/env';
 
 export class FileSystemImageStorage implements ImageStoragePort {
   private readonly uploadsDir: string;
 
-  constructor(baseDir: string = process.cwd()) {
-    this.uploadsDir = path.join(baseDir, 'storage/uploads');
+  constructor() {
+    this.uploadsDir = env.uploadPath;
     this.ensureUploadsDirectory();
   }
   private ensureUploadsDirectory(): void {
