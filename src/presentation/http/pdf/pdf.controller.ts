@@ -93,6 +93,6 @@ export const generateReport = async (req: Request, res: Response) => {
         fs.unlinkSync(filePath);
       }
     },
-    30 * 60 * 1000,
+    3 * 60 * 60 * 1000,
   );
 };
